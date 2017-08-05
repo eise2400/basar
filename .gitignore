@@ -1,0 +1,8 @@
+/tmp_old/
+/tmp/
+/.settings/
+/config/app-online.php
+/config/app.php
+/logs/debug.log
+/logs/error.log
+.buildpath

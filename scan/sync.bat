@@ -1,0 +1,1 @@
+php standaloneSync.php

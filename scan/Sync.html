@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Basar Test - Scanner</title>
+<!-- import local jquery, must be where the html is  -->
+<script src="jquery.min.js"></script>
+<script>
+
+syncTimeout = 0;
+
+// als erste Aktion ist mit dem Server zu synchronisieren
+$(document).ready(function() {
+        syncTimeout = setTimeout(webSync, 5000);
+});
+
+function webSync() {
+	var d = new Date();
+	var t = d.getTime();
+	$.ajax({
+	    type: "POST",
+	    url: "webSync.php",
+	    data: {},
+	    dataType:'JSON',
+	    success: function(response){			// successful return
+	    	console.log("SyncTimer Post: "+t);
+	    	console.log(t+": ++ Sync successful ++");
+	    	respArray = JSON.parse(JSON.stringify(response), true);		// create a array out of the json response
+	    	action = respArray.action;
+                
+                if (action=="WEB")
+                {
+                    var txt = "<tbody>";
+                    txt += "<tr>";
+                    txt += "<td>Letzter WebSync: " + respArray.zeit + "</td>";
+                    txt += "</tr>";
+                    $.each(respArray.groesse, function(tabelle, wert) {
+                        txt += "<tr><td>" + tabelle + ": " + wert + "</td></tr>";
+                    });
+                    txt += "<tr>";
+                    txt += "<td>Nachricht: " + respArray.message + "</td>";
+                    txt += "</tr>";                    
+                    txt += "</tbody>";        
+                    $("#websyncTable tbody").replaceWith(txt);
+                }
+
+	    },
+            error: function(response){				// error return
+                var err = JSON.parse(response.responseText);	// create a array out of the json response
+                console.log(t+": -- Sync failed: "+err.errMsg+" --");
+            }
+	});
+	syncTimeout = setTimeout(syncTimer, 10000);
+};
+
+function syncTimer() {
+	var d = new Date();
+	var t =d.getTime();
+	$.ajax({
+	    type: "POST",
+	    url: "standaloneSync.php",
+	    data: {},
+	    dataType:'JSON',
+	    success: function(response){			// successful return
+	    	console.log("SyncTimer Post: "+t);
+	    	console.log(t+": ++ Sync successful ++");
+	    	respArray = JSON.parse(JSON.stringify(response), true);		// create a array out of the json response
+	    	action = respArray.action;
+
+	    	if (action=="SYNC" || action=="NO_DEMAND")
+	    	{
+                    a = respArray.lastIdxArray;
+                    console.log(a.k1);
+                    var txt = "<tbody>";
+                    txt += "<tr>";
+                    txt += "<td>Kasse 1</td>";
+                    txt += "<td>"+a.k1+"</td>";
+                    txt += "</tr>";
+                    txt += "<tr>";
+                    txt += "<td>Kasse 2</td>";
+                    txt += "<td>"+a.k2+"</td>";
+                    txt += "</tr>";
+                    txt += "<tr>";
+                    txt += "<td>Kasse 3</td>";
+                    txt += "<td>"+a.k3+"</td>";
+                    txt += "</tr>";
+                    txt += "</tbody>";
+                    console.log(txt);
+                    $("#syncTable tbody").replaceWith(txt);
+	    	}
+	    },
+            error: function(response){				// error return
+                var err = JSON.parse(response.responseText);	// create a array out of the json response
+                console.log(t+": -- Sync failed: "+err.errMsg+" --");
+            }
+	});
+	syncTimeout = setTimeout(syncTimer, 10000);
+};
+</script>
+<title>Sync Page</title>
+</head>
+<body>  
+<h1>SYNC</h1>
+<table id="syncTable">
+<tbody><tr><td>...</td></tr>
+</tbody>
+</table>
+<table id="websyncTable">
+<tbody><tr><td>Text2</td></tr>
+</tbody>
+</table>
+</body>
+</html>
+
+

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Basar Test - Scanner</title>
+<!-- import local jquery, must be where the html is  -->
+<script src="jquery.min.js"></script>		
+<script>
+
+syncTimeout=0
+inputTimeout=0
+var cartItems=[];		// the global cart variable
+var cartObsolete=false;
+
+$(document).ready(function() {
+	//syncTimeout = setTimeout(syncTimer, 8000);
+});
+
+function syncTimer() {
+	var d = new Date();
+	var t =d.getTime();	
+	$.ajax({
+	    type: "POST",
+	    url: "syncRequest.php",
+	    data: {},
+	    dataType:'JSON',
+	    success: function(response){			// successful return
+	    	console.log("SyncTimer Post: "+t);
+	    	console.log(t+": ++ Sync successful ++");
+	    },
+		error: function(response){				// error return
+			var err = JSON.parse(response.responseText);	// create a array out of the json response
+			console.log(t+": -- Sync failed: "+err.errMsg+" --");		
+		}
+	});
+	syncTimeout = setTimeout(syncTimer, 8000);
+};
+	
+
+$(function(){
+	
+	//----------------------------------- input field control
+	$("#eingabeId").keyup(function() {
+				
+		if (inputTimeout>0){
+        	clearTimeout(inputTimeout);					// stop timeout if it was running 
+        }	
+		
+		var inputLen = $("#eingabeId").val().length;	// get length of barcode		
+		
+        if (inputLen == 8) {        	
+        	var barcode = $("#eingabeId").val();
+			if (barcode=="99914158"){					// checkout
+        		checkout();
+        		
+        	}
+        	else if (barcode=="99917159"){				// delete last item
+        		cartItems.pop();
+        		displayCart(cartItems);						// refresh the cart display
+        	}
+        	else if (barcode=="99917753"){				// delete cart
+        		cartItems=[];
+        		displayCart(cartItems);						// refresh the cart display
+        	}
+        	else
+        	{
+        		addItem(barcode);						// call the add item
+        		//Q: why not display cart here? A: it will be here before the html query returns success
+        		
+        	}			
+        	$("#eingabeId").val("");					// reset the input field
+        }        	
+        else if (inputLen > 8) {						// error case too many characters
+        	$("#eingabeId").val("");
+        }
+        else if (inputLen > 0) {						// between 1 and 8 characters -> run timeout
+        	console.log("Input: "+inputLen);
+        	inputTimeout = setTimeout(function(){
+        		$("#eingabeId").val("");      			// reset input value by timeout  		
+        	}, 3000);        	
+        }
+	});
+
+	//----------------------------------- button control
+	$("#btnDelCart").click(function(){
+		cartItems=[];
+		displayCart(cartItems);
+		$("#errMsgId").html("Einkaufskorb gelöscht").css({background:"yellow",color:"black"});
+	});
+	
+	$("#btnDelLast").click(function(){
+		cartItems.pop();
+		displayCart(cartItems);
+		$("#errMsgId").html("Letzer Artikel im Einkaufskorb gelöscht").css({background:"yellow",color:"black"});
+	});
+	
+	$("#btnRefresh").click(function(){
+		if (cartObsolete==true)
+		{
+			cartObsolete==false;
+			cartItems=[];
+		}
+		displayCart(cartItems);
+		$("#sum").css({background:"lime", color:"black"}); 
+		$("#errMsgId").html(" ").css({background:"white",color:"black"});
+	});
+	
+	$("#btnCheckout").click(function(){
+		if (cartObsolete==false)
+		{
+			checkout(cartItems);
+			displayCart(cartItems);
+		}
+		else
+		{
+			$("#errMsgId").html("Warenkorb bereits verkauft").css({background:"yellow",color:"black"});
+		}
+	});
+		
+});
+
+// displayCart
+// iterate through the cart items in reverse order 
+// create the table rows for the cart items and place it in #cartTableId
+// calcuate the sum and display it in #sumId
+//
+function displayCart(cartItems)
+{
+	console.log("-------------- FUNCT: DisplayCart -----------")
+	var sum=0;
+	var len = cartItems.length;
+	console.log(cartItems);
+	var txt="<tbody>";
+	for(var i=len-1;i>=0;i--){
+		var pos = i+1;
+    	txt += "<tr>";
+    	txt += "<td>"+pos+"</td>";
+    	txt += "<td>"+cartItems[i].bc+"</td>";
+    	txt += "<td>"+unescape(cartItems[i].txt)+"</td>";		// unescape to allow ü,ö ...
+    	txt += "<td>"+cartItems[i].price+"</td>";
+    	txt += "</tr>";
+    	sum += parseFloat(cartItems[i].price);
+	}
+	txt+="</tbody>";
+	$("#cartTableId tbody").replaceWith(txt);
+	$("#sumId").html(sum.toFixed(2)+"€");	
+}
+
+// add item
+// checks if the item is already in the cart
+// does an json ajax post with barcode in data
+// receives the item data in the response to the ajax post again as json data
+// adds the item to the cartItems array
+// displays the cart
+function addItem(barcode){
+	//if (in_array(barcode)
+	$("#sum").css({background:"lime", color:"black"});
+	for (i=0; i<cartItems.length;i++)
+	{
+		bc = cartItems[i].bc
+		if (cartItems[i].bc == barcode)
+		{
+			// already in cart => add error handling
+			console.log("barcode already in cart");
+			$("#errMsgId").html("Barcode bereits im Einkaufskorb").css({background:"red",color:"yellow"});;
+			return;
+		}
+	}	
+	$.ajax({
+	    type: "POST",
+	    url: "srv_itemRequest.php",
+	    data: {"barcode":barcode},
+	    dataType:'JSON',
+	    contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+	    success: function(response){			// successful return
+	    	if (cartObsolete==true){
+	    		cartItems=[];
+	    		cartObsolete=false;
+	    	}	    	
+	    	console.log("Found");
+	    	console.log(response);
+	    	var item = JSON.parse(JSON.stringify(response));		// create a array out of the json response
+	    	console.log(item);
+			cartItems.push(item);
+			var successMsg = "Artikel "+ item.bc +" -"+ unescape(item.txt)+" - hinzugefügt";
+	    	$("#errMsgId").html(successMsg).css({background:"lime", color:"black"});	    	
+	    	displayCart(cartItems);						// refresh the cart display
+	    },
+		error: function(response){				// error return
+			console.log("--------------BARCODE ERROR RESPONSE---------------");		
+    		var err = JSON.parse(response.responseText);
+    		$("#errMsgId").html(unescape(err.msg)).css({background:"red",color:"yellow"});
+    		displayCart(cartItems);						// refresh the cart display
+		}
+	});
+}
+
+// checkout
+// create a json object out of the cartItems array
+// send the json object via ajax to the srv_checkout.php script
+// on succeess delete the cart
+function checkout(){
+	
+	console.log("checkout");
+	$("#sum").css({background:"yellow", color:"black"}); 
+	var registerId=$("#registerId").val();
+		
+	$.ajax({
+	    type: "POST",
+	    url: "srv_checkout.php",
+	    data: {"cart":JSON.stringify(cartItems)},
+	    dataType:'JSON',
+	    contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+	    success: function(response){
+	    	console.log("--------------CHECKOUT SUCCESS RESPONSE---------------");
+	    	console.log(response);
+	    	var item = JSON.parse(JSON.stringify(response));
+	    	console.log(item);
+	    	displayCart(cartItems);						// refresh the cart display
+	    	cartObsolete=true;
+	    	$("#errMsgId").html("WARENKORB VERKAUFT").css({background:"yellow",color:"black"});
+	    },
+		error: function(response){
+			console.log("--------------CHECKOUT ERROR RESPONSE---------------");
+    		var err = JSON.parse(response.responseText);
+    		$("#errMsgId").html(unescape(err.msg)).css({background:"red",color:"yellow"});
+		}
+	});
+}
+
+
+</script>
+
+<style>
+h1 
+{
+	background-color: #50C0C0;
+	padding: 10px;
+}
+
+
+#content {
+	float:left;	
+	width:100%;
+}
+
+#eingabeId {
+	float:left;
+	width: 50%;
+	font-family: "Arial";
+	font-size: 50px;
+	height:60px;
+	background-color: #E0E0FF;
+}
+
+#sum {
+	position: static;
+	float:right;
+	width: 45%;
+	font-family: "Arial";
+	font-size: 40px;
+	background-color: lime;
+	vertical-align:middle;
+	height: 70px;	
+}
+
+#sumtxt {
+	float: left;
+	background-color: red;
+	line-height: 0%;
+}
+
+#sumId {
+	float: right;
+	line-height: 0%;
+}
+
+
+#article {
+	float:left;
+	width:70%;
+}
+
+#message {
+	float:left;
+	width:60%;
+	height:50px;
+}
+
+#cart {
+	
+}
+
+#cartTableId {
+	border: 1px solid black;
+	width:100%;
+}
+
+#control{
+	float:left;
+	width:24%;
+	padding:10px;
+}
+
+.CtrlMenuBtn{
+	width:60%;
+	margin:20px;
+	height:40px;	
+}
+
+
+
+tr:nth-child(even) {background-color: #f2f2f2}
+
+tr
+{
+	border: 1px solid gray;
+}
+th
+{
+	border: 1px solid black;
+	background-color: #f2f2f2;
+}
+
+</style>
+
+<!-- 
+ <style>
+h1 
+{
+	background-color: #50C0C0;
+	padding: 10px;
+}
+
+
+#content {
+	position: static;
+	width:500%;
+	background-color : navy
+}
+
+#headarea {
+	position: static;
+	top:10px;
+	left:5px;
+	background-color : brown
+}
+
+#inputarea {
+	position: static;
+	float:left;
+	top:10px;
+	left:5px;
+	background-color : yellow
+}
+
+#eingabeId {
+	position: static;
+	top: ´10px;
+	left:5px;
+	float:left;
+	width: 50%;
+	font-family: "Arial";
+	font-size: 50px;
+	height:60px;
+	background-color: #E0E0FF;
+}
+
+#sum {
+	position: static;
+	float:right;
+	width: 30%;
+	font-family: "Arial";
+	font-size: 40px;
+	background-color: lime;
+	vertical-align:middle;
+}
+
+#sumtxt {
+	float: left;
+	background-color: red;
+}
+
+#sumId {
+	float: right;
+}
+
+
+#article {
+	float:left;
+	width:70%;
+}
+
+#message {
+	float:left;
+	width:60%;
+	height:50px;
+}
+
+#cart {
+	
+}
+
+#cartTableId {
+	border: 1px solid black;
+	width:100%;
+}
+
+#control{
+	float:left;
+	width:24%;
+	padding:10px;
+}
+
+.CtrlMenuBtn{
+	width:60%;
+	margin:20px;
+	height:40px;	
+}
+
+
+
+tr:nth-child(even) {background-color: #f2f2f2}
+
+tr
+{
+	border: 1px solid gray;
+}
+th
+{
+	border: 1px solid black;
+	background-color: #f2f2f2;
+}
+
+</style>
+ -->
+
+
+</head>
+	<body>
+		<header>
+			<h1>Grundschule Teugn Basar 2016</h1>
+		</header>
+		<section id="content">
+			<section id="article">
+				<div id="headarea">
+					<div id="inputarea">
+						<input type="text" id="eingabeId" name="eingabe" ></input>
+						<div id="sum">				
+							<p id="sumtxt">SUMME:</p>
+							<p id="sumId">0.00€</p>
+						</div>
+					</div>
+					<div id="message">			
+						<p id="errMsgId">Willkommen</p>
+					</div>
+				</div>
+				<div id="cart">
+					<table id="cartTableId">
+						<thead>
+							<tr><th>Pos</th><th>Barcode</th><th>Text</th><th>Preis</th></tr>
+						<thead>
+						<tbody>
+						</tbody>
+					</table>
+				</div>
+			</section>		
+			<section id="control" class="userMenu">
+				
+				<button id="btnRefresh" class="CtrlMenuBtn">Ansicht erneuern</button><br>
+				<button id="btnDelCart" class="CtrlMenuBtn">Lösche Warenkorb</button><br>
+				<button id="btnDelLast" class="CtrlMenuBtn">Lösche letzten Artikel</button><br>
+				<button id="btnCheckout" class="CtrlMenuBtn">Bezahlen</button><br>
+			</section>
+		</section>
+	</body>
+</html>
