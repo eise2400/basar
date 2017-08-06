@@ -26,6 +26,21 @@ class RegistersController extends AppController
     }
 
 
+    private function messageEnd($message) {
+        $this->set(compact('message'));
+        $this->viewBuilder()->setLayout('ajax');        
+    }
+    
+    
+    // Wie viele Stunden ist $date schon her?
+    private function stundenHer($date)
+    {
+        $datetime1 = date_create($date);
+        $datetime2 = date_create(); // Jetzt
+        $interval = date_diff($datetime1, $datetime2);
+        return $interval->format('%h');
+    }  
+
 
     /**
      * Sync method
@@ -40,23 +55,34 @@ class RegistersController extends AppController
         $message = '';
         $lastscan = 0; // Das ist der letzte bekannte Scan dieser Kasse
         
-       if ($this->request->is('post')) {
-            $message = 'Fehler';
-            $this->set(compact('message'));
-            $this->viewBuilder()->setLayout('ajax');
-        }
+        // Nur per Post möglich
+        if ($this->request->is('post')) return $this->messageEnd('Fehler');
       
         $eingabe = $this->request->data;
         
         //modus = 1 => Datenabruf; modus = 2 => Scans senden
         $modus = $eingabe['modus'];
+        if ($modus != 1 && $modus != 2) return $this->messageEnd('Modus fehlt');
+        
         //$ip = '192.168.2.201';
         $ip = $eingabe['ip'];
+        if (is_null($ip) || $ip == '') return $this->messageEnd('IP fehlt');        
         
-        
-        //$modus = 2;
-        //$ip = '192.168.2.201';
         //$eingabe['scans'] = '[["4","2","123","3245324","2017-08-03 22:50:20"]]';
+        $registerid = $eingabe['registerid'];
+        
+        // Prüfen, ob registerid gesetzt und ob diese zum Benutzer passt
+        $kassen = $this->Registers->find('all', array( 
+          'conditions' => array('user_id = '.$this->Auth->user('id'), 'id = '.$registerid),
+          'limit' => 1
+        ));
+        $kasse = $kassen->first();
+        if (is_null($kasse)) return $this->messageEnd('Kasse nicht eingetragen oder nicht berechtigt'); 
+            
+        // Wann war der letzte Sync?
+        if ($this->stundenHer($kasse->lastSync) >= 1) {
+            // IP und last Sync eintragen
+        }
         
         // Neue Daten abfragen
         $connection = ConnectionManager::get('default');              
@@ -221,8 +247,7 @@ class RegistersController extends AppController
                 else {
                     $message = 'Keine neuen Scans übertragen.';
                 }
-                
-                
+      
                 Log::write('debug', print_r($scans, true));
                 $message = 'Scans in Datenbank eingetragen!'; 
             }
@@ -362,7 +387,11 @@ class RegistersController extends AppController
      */
     public function index()
     {
-        $this->set('registers', $this->paginate($this->Registers));
+        $this->paginate = [
+            'contain' => ['Users']
+        ];
+        $regs = $this->paginate($this->Registers);
+        $this->set('registers', $regs);
         $this->set('_serialize', ['registers']);
     }
 
@@ -376,7 +405,7 @@ class RegistersController extends AppController
     public function view($id = null)
     {
         $register = $this->Registers->get($id, [
-            'contain' => []
+            'contain' => ['Users']
         ]);
         $this->set('register', $register);
         $this->set('_serialize', ['register']);
@@ -405,7 +434,7 @@ class RegistersController extends AppController
             $user = $this->Users->get($userid);
             
             // Syncadresse zusammenbauen:
-            // Format: https://K1:passwort@www.basar-teugn.de/kasse
+            // Format: https://Kx:passwort@www.basar-teugn.de/kasse
             $url = AppController::getSetting('Kassen-URL');
             $prot = substr($url, 0, strpos($url, '://') + 3);
             $uri = substr($url, strpos($url, '://') + 3);
@@ -459,10 +488,20 @@ class RegistersController extends AppController
         $this->request->allowMethod(['post', 'delete']);
         $register = $this->Registers->get($id);
         $benutzer = $register->user_id;
-        if ($this->Registers->delete($register)) {
-            //UsersController::delete($benutzer);
-            $this->Flash->success(__('Die Kasse wurde gelöscht.'));
-        } else {
+        if ($this->Registers->delete($register)) {     
+            $this->loadModel('Users');
+            $user = $this->Users->get($benutzer);
+            if (is_null($user)) {
+               $this->Flash->success(__('Die Kasse wurde gelöscht. Der Kassenbenutzer war schon weg.'));                
+            }
+            elseif ($this->Users->delete($user)) {
+                $this->Flash->success(__('Die Kasse und Kassenbenutzer wurden gelöscht.'));
+            } 
+            else {
+                $this->Flash->error(__('Kasse gelöscht. Kassenbenutzer konnte nicht gelöscht werden.'));
+            }
+        } 
+        else {
             $this->Flash->error(__('Die Kasse konnte nicht gelöscht werden.'));
         }
         return $this->redirect(['action' => 'index']);

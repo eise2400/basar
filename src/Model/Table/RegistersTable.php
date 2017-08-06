@@ -27,9 +27,10 @@ class RegistersTable extends Table
         $this->displayField('id');
         $this->primaryKey('id');
         $this->addBehavior('Timestamp');
-        $this->hasOne('User', [
-            'foreignKey' => 'user_id'
-        ]);
+        $this->belongsTo('Users', [
+                'foreignKey' => 'user_id',
+                'joinType' => 'INNER'
+                ]);
         $this->hasMany('Sync', [
             'foreignKey' => 'register_id'
         ]);

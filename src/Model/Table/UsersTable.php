@@ -28,8 +28,14 @@ class UsersTable extends Table
         $this->primaryKey('id');
         $this->addBehavior('Timestamp');
         $this->hasMany('Items', [
+            'className' => 'Items',
             'foreignKey' => 'user_id',
             'dependent' => true
+        ]);
+        $this->hasOne('Registers', [
+            'className' => 'Items',            
+            'foreignKey' => 'user_id',
+            'dependent' => false
         ]);
         $this->addBehavior('Captcha', [
             'field' => 'securitycode',

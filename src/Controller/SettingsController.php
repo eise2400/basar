@@ -160,26 +160,11 @@ class SettingsController extends AppController
     }
     
     
-//    public function eanSetzen() {
-//        $jahr = AppController::getSetting('Jahr'); 
-//        $code2 = substr($jahr, strlen($jahr) - 1, 1);
-//
-// 	$connection = ConnectionManager::get('default');
-//        $result = $connection->execute('SELECT items.id AS id, items.nummer AS itnr, users.nummer AS usnr '.
-//                'FROM items LEFT JOIN users ON user_id = users.id')->fetchAll('num');
-//        for ($o = 0; $o < sizeof($result); $o++) {
-//            $code1 = sprintf("%'.03d", $result[$o][2].substr($jahr, strlen($jahr) - 2, 1));
-//            $code = $code1.sprintf("%'.02d", $result[$o][1]).$code2; 
-//            $barcode = ItemsController::ean8check($code);         
-//            $connection->execute('UPDATE items SET barcode = '.$barcode.' WHERE id = '.$result[$o][0]);
-//        }
-//    }
-    
     public function export($tables = ['settings', 'users', 'items'])
     {	
-	// $this->eanSetzen();
         
-        $connection = ConnectionManager::get('default');        
+        $connection = ConnectionManager::get('default');   
+        $connection->execute('SET NAMES utf8');  
         $return = '';
         
         //get all of the tables

@@ -15,19 +15,21 @@
     <table cellpadding="0" cellspacing="0">
         <thead>
             <tr>
-                <th scope="col"><?= $this->Paginator->sort('ID') ?></th>
-                <th scope="col"><?= $this->Paginator->sort('IP im LAN') ?></th>
-                <th scope="col"><?= $this->Paginator->sort('angelegt') ?></th>
-                <th scope="col"><?= $this->Paginator->sort('geändert') ?></th>
-                <th scope="col"><?= $this->Paginator->sort('letzter Sync') ?></th>
-                <th scope="col"><?= $this->Paginator->sort('Kommentar') ?></th>
-                <th scope="col" class="actions"><?= __('Actions') ?></th>
+                <th scope="col">ID</th>
+                <th scope="col">Login</th>  
+                <th scope="col">IP im LAN</th>
+                <th scope="col">angelegt</th>
+                <th scope="col">geändert</th>
+                <th scope="col">letzter Sync</th>
+                <th scope="col">Kommentar</th>
+                <th scope="col" class="actions"><?= __('Aktionen') ?></th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($registers as $register): ?>
             <tr>
                 <td><?= $this->Number->format($register->id) ?></td>
+                <td><?= h($register->user->nummer) ?></td>
                 <td><?= h($register->ip) ?></td>
                 <td><?= h($register->created) ?></td>
                 <td><?= h($register->modified) ?></td>
