@@ -32,13 +32,11 @@ class RegistersController extends AppController
     }
     
     
-    // Wie viele Stunden ist $date schon her?
-    private function stundenHer($date)
+    // Wie viele Minuten ist $date schon her?
+    private function minutenHer($date)
     {
-        $datetime1 = date_create($date);
-        $datetime2 = date_create(); // Jetzt
-        $interval = date_diff($datetime1, $datetime2);
-        return $interval->format('%h');
+        $spanne = (strtotime('now') - strtotime($date)) / 60;
+        return $spanne;
     }  
 
 
@@ -51,24 +49,36 @@ class RegistersController extends AppController
      */
     public function syncData()
     {
+        $test = true;
+        
         error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
         $message = '';
         $lastscan = 0; // Das ist der letzte bekannte Scan dieser Kasse
         
         // Nur per Post möglich
-        if ($this->request->is('post')) return $this->messageEnd('Fehler');
+        if (!$test) {
+            if ($this->request->is('post')) return $this->messageEnd('Fehler');
+        }
       
-        $eingabe = $this->request->data;
+        if ($test) {
+            $eingabe = array('modus' => 1, 'ip' => '192.168.2.201', 'registerid' => 10,
+                'maxwerte' => '{"settings":"2016-12-31 23:00:00","users":"2018-06-09 21:21:21","items":"2018-06-09 19:35:28"}');
+        } else {
+            $eingabe = $this->request->data;
+        }
         
         //modus = 1 => Datenabruf; modus = 2 => Scans senden
+        if (!array_key_exists('modus', $eingabe)) return $this->messageEnd('Modus fehlt'); 
         $modus = $eingabe['modus'];
         if ($modus != 1 && $modus != 2) return $this->messageEnd('Modus fehlt');
         
         //$ip = '192.168.2.201';
+        if (!array_key_exists('ip', $eingabe)) return $this->messageEnd('IP fehlt'); 
         $ip = $eingabe['ip'];
         if (is_null($ip) || $ip == '') return $this->messageEnd('IP fehlt');        
         
         //$eingabe['scans'] = '[["4","2","123","3245324","2017-08-03 22:50:20"]]';
+        if (!array_key_exists('registerid', $eingabe)) return $this->messageEnd('Kassennummer fehlt'); 
         $registerid = $eingabe['registerid'];
         
         // Prüfen, ob registerid gesetzt und ob diese zum Benutzer passt
@@ -80,54 +90,41 @@ class RegistersController extends AppController
         if (is_null($kasse)) return $this->messageEnd('Kasse nicht eingetragen oder nicht berechtigt'); 
             
         // Wann war der letzte Sync?
-        if ($this->stundenHer($kasse->lastSync) >= 1) {
-            // IP und last Sync eintragen
+        // Wenn noch nicht mehr als eine Stunde her, dann IP Prüfung durchführen
+        if ($this->minutenHer($kasse->lastSync) < 60) {
+            if (!is_null($kasse->ip) && $kasse->ip != $ip) {
+                return $this->messageEnd('Kasse unter anderer IP eingetragen. Doppelt angemeldet?');
+            }
         }
-        
+                    
         // Neue Daten abfragen
         $connection = ConnectionManager::get('default');              
-        $connection->execute('SET NAMES utf8');        
+        $connection->execute('SET NAMES utf8');
+        
+        $ERLAUBT = ['settings','users','items'];
         
         if ($modus == 1) {
+            if (!array_key_exists('maxwerte', $eingabe)) return $this->messageEnd('Maxwerte fehlen'); 
             $maxwerte = json_decode($eingabe['maxwerte']);
             //$maxwerte = json_decode('{"settings":0,"users":0,"items":0}');
             //$maxwerte = json_decode('{"settings":"2018-12-31 23:00:00","users":"2018-06-09 21:21:21","items":"2017-06-09 19:35:28"}');
 
-            // Ist Kasse bereits eingtragen?
-            $query = $this->Registers->findByIp($ip);
-            $kasse = $query->first();
-            if ($kasse == null) // Kasse ist noch nicht eingetragen, also neu anlegen
-            {
-                $register = $this->Registers->newEntity();
-                $register->ip = $ip;
-                $register->active = true;
-                $register->local = false;
-                $register->syncEn = true;
-                if ($this->Registers->save($register)) {
-                    $message = 'Kasse neu angelegt.';
-                } else {
-                    $message = 'Kasse konnte nicht angelegt werden.';
-                }             
-            }
-            else // Kasse ist bereits eingetragen. Dann ermitteln, wie viele Scans schon da sind.
-            {
-                $message = 'Kasse bereits eingetragen.';
-                $registerid = $kasse->id;
-                $statement = $connection->execute('SELECT MAX(created) AS maxval FROM sync WHERE register_id = '.$registerid)->fetchAll('assoc');
-                if ($statement) $lastscan = $statement[0]["maxval"];
-                else $lastscan = 0;
-            }
-            $register = json_encode($kasse);
-
-
-            $sqlsync = array();
+            // Zeitstempel vom letzten Scan dieser Kasse holen und in $lastscan merken für modus=2
+            $statement = $connection->execute('SELECT MAX(created) AS maxval FROM sync WHERE register_id = '.$registerid)->fetchAll('assoc');
+            if ($statement) $lastscan = $statement[0]["maxval"];
+            else $lastscan = 0;
+            
+            $sqlsync = [];
             $synctabelleda = true;
 
+            //tabelleLesen($tabelle, $modified, $ausschluss)
             foreach ($maxwerte as $tabelle => $maxval) {
-                $$tabelle = array(); // Jede Tabelle wird in die entsprechende Variable geschrieben.
+                if (!in_array($tabelle, $ERLAUBT)) return $this->messageEnd('Tabelle nicht erlaubt');
+                
+                $$tabelle = []; // Jede Tabelle wird in die entsprechende Variable geschrieben.
                 if ($maxval == 0) // Noch keine Daten vorhanden? Dann muss auch noch ein CREATE TABLE gemacht werden
                 {
-                    $synctabelleda = false;
+                    $synctabelleda = false; // Es ist anzunehmen, dass die Synctabellen auch noch nicht vorhanden sind...
                     $sqlsync[] = 'DROP TABLE IF EXISTS '.$tabelle;
                     $statement = $connection->execute('SHOW CREATE TABLE '.$tabelle)->fetchAll('assoc');
                     $sqlsync[] = $statement[0]["Create Table"];                  
@@ -135,8 +132,9 @@ class RegistersController extends AppController
 
                 // Und jetzt noch die eigentlichen Daten auslesen
                 // Da die Primärschlüssel erhalten bleiben müssen und bei diesen Tabellen nur auf dem
-                // Server geschrieben werden dürfte und muss, werden die Daten samt Schlüssel übertragen.
-                // Um mit den INSERTs nicht zu kollidieren, müssen ggf. vorhandene Zeilen vorm Insert gelöscht werden.
+                // Server geschrieben werden dürfen, werden die Daten samt Schlüssel übertragen.
+                // Um bei geänderten Einträgen mit INSERTs nicht zu kollidieren, müssen ggf. vorhandene Zeilen vorm Insert gelöscht werden.
+                // Geht nur, weil die Fremdschlüsselüberwachung beim Client nicht aktiv ist!
                 $result = $connection->execute('SELECT * FROM '.$tabelle.' WHERE modified > "'.$maxval.'"')->fetchAll('num');
                 $num_fields = sizeof($result) > 0 ? sizeof($result[0]) : 0;
 
@@ -161,6 +159,8 @@ class RegistersController extends AppController
                     {
                         $row[$j] = addslashes($row[$j]);
                         $row[$j] = ereg_replace("\n","\\n",$row[$j]);
+                        
+                        // Alle Fehler werden mit Anführungszeichen übertragen. SQL interpretiert den Inhalt bei Zahlwerten trotzdem richtig.
                         if (isset($row[$j])) { $tmpstr .= '"'.$row[$j].'"' ; } else { $tmpstr .= '""'; }
                         if ($j < ($num_fields-1)) { $tmpstr .= ','; }
                     }
@@ -176,7 +176,7 @@ class RegistersController extends AppController
                 }
             }
 
-            // Wenn die anderen Tabellen nicht vorhanden sind, dann die Sync-Tabelle wohl auch nicht
+            // Wenn vermutet wird, dass die Sync-Tabellen noch nicht vorhanden sind, die Statements mal als IN NOT EXISTS mitschicken.
             if (!$synctabelleda)
             {
                 $statement = $connection->execute('SHOW CREATE TABLE sync')->fetchAll('assoc');
@@ -193,6 +193,20 @@ class RegistersController extends AppController
             }
 
             $this->set(compact('sqlsync', 'settings', 'registers', 'users', 'items', 'message', 'lastscan'));
+            
+            // Nun die IP ggf. eintragen oder ändern
+            if (is_null($kasse->ip) || $kasse->ip != $ip) {
+                $kasse->ip = $ip;
+                if ($this->Registers->save($kasse)) {
+                    $message = 'Sync erfolgreich. IP eingetragen.';
+                }
+                else {
+                    $message = 'Sync geschrieben. IP konnte nicht eingetragen werden.';
+                }
+            }
+            else {
+                $message = 'Wiederholter Sync erfolgreich.';
+            }
         }
         
         // Ansonsten Kassen-Scans einlesen
