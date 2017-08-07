@@ -34,10 +34,10 @@ function syncWeb()
 
     // URL des Aufrufs.
     // Wird dann auch per https gehen
-    $addr = 'http://admin:adMIN16gs@localhost/kasse';
+    $addr = 'http://K6:18316650@localhost/kasse';
     
     // Basar-eindeutige ID der Kasse
-    $registerid = 1;
+    $registerid = 10;
     
     
     // Diese Tabellen sind abzugleichen
@@ -171,12 +171,22 @@ function syncWeb()
         $scans = mysqli_fetch_all($result);
     }   
     
+    // Außerdem ermitteln, wie viele Scans dieser Kasse schon auf dem Server sein müssten.
+    $sql = 'SELECT COUNT(*) AS anz FROM sync WHERE register_id = '.$registerid.' AND created <= "'.$lastscan.'"';
+    $result = mysqli_query($con, $sql);
+    if ($result) {
+        $row = mysqli_fetch_array($result);
+        $oldscans = $row['anz'];
+    } 
+    else $oldscans = 0;
+    
     // Felder für die Anfrage an den Server zusammenpacken
     $fields = array(
         'registerid' => $registerid,        
         'ip' => $myip,
         'modus' => '2',
-        'scans' => json_encode($scans)
+        'scans' => json_encode($scans),
+        'oldscans' => $oldscans
     );
 
     // Anfrage beim Server

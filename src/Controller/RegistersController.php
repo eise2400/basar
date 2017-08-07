@@ -12,6 +12,13 @@ use Cake\Log\Log;
  */
 class RegistersController extends AppController
 {
+    private $connection;
+    
+    public function initialize() {
+        parent::initialize();
+        $this->connection = ConnectionManager::get('default');
+    }
+    
     public function isAuthorized($user)
     {
         $action = $this->request->params['action'];
@@ -39,7 +46,107 @@ class RegistersController extends AppController
         return $spanne;
     }  
 
+    private function tabelleLesen($tabelle, $modified = 0, $ausschluss = []) 
+    {
+        $tab = [];
+        if ($modified == 0) // Noch keine Daten vorhanden? Dann muss auch noch ein CREATE TABLE gemacht werden
+        {
+            array_push($tab, 'DROP TABLE IF EXISTS '.$tabelle);
+            $statement = $this->connection->execute('SHOW CREATE TABLE '.$tabelle)->fetchAll('assoc');
+            array_push($tab, $statement[0]["Create Table"]);
+        }
 
+         // Und jetzt noch die eigentlichen Daten auslesen
+         // Da die Primärschlüssel erhalten bleiben müssen und bei diesen Tabellen nur auf dem
+         // Server geschrieben werden dürfen, werden die Daten samt Schlüssel übertragen.
+         // Um bei geänderten Einträgen mit INSERTs nicht zu kollidieren, müssen ggf. vorhandene Zeilen vorm Insert gelöscht werden.
+         // Geht nur, weil die Fremdschlüsselüberwachung beim Client nicht aktiv ist!
+        $result = $this->connection->execute('SELECT * FROM '.$tabelle.' WHERE modified > "'.$modified.'" AND modified = created')->fetchAll('assoc');
+        $num_fields = sizeof($result) > 0 ? sizeof($result[0]) : 0;
+
+        $tmpstr = '';
+        //$delstr = '';
+        $i = 0; // Zähler wie viele Zeilen in ein Statement gepackt werden 
+        for ($o = 0; $o < sizeof($result); $o++)
+        {
+            $row = $result[$o];
+            if ($i == 0) {
+            //    $delstr = 'DELETE FROM '.$tabelle.' WHERE id IN (';
+                $tmpstr = 'INSERT INTO '.$tabelle.' VALUES (';
+            }
+            else 
+            {
+            //    $delstr .= ',';
+                $tmpstr .= ',(';
+            }
+
+            //$delstr .= $row['id']; // id ist jeweils die erste Spalte
+            $j = 0;
+            foreach($row as $spalte => $wert) 
+            {
+                if (in_array($spalte, $ausschluss)) {
+                    $wert = '';
+                }
+                else {
+                    $wert = addslashes($wert);
+                    $wert = ereg_replace("\n","\\n",$wert);
+                }
+                
+                // Alle Fehler werden mit Anführungszeichen übertragen. SQL interpretiert den Inhalt bei Zahlwerten trotzdem richtig.
+                if (isset($wert)) { $tmpstr .= '"'.$wert.'"' ; } else { $tmpstr .= '""'; }
+                if ($j < ($num_fields-1)) { $tmpstr .= ','; }
+                $j++;
+            }
+            $tmpstr .= ")";
+            $i++;
+
+            if (($i >= 10) || ($o == sizeof($result) - 1)) // nach 10 Datensätzen oder wenn keine mehr übrig sind
+            {
+                //array_push($tab, $delstr.')');
+                array_push($tab, utf8_encode($tmpstr));                      
+                $i = 0;
+            }
+        }
+        
+        $result = $this->connection->execute('SELECT * FROM '.$tabelle.' WHERE modified > "'.$modified.'" AND modified > created')->fetchAll('assoc');
+        $num_fields = sizeof($result) > 0 ? sizeof($result[0]) : 0;
+
+        $tmpstr = '';
+        for ($o = 0; $o < sizeof($result); $o++)
+        {
+            $row = $result[$o];
+            $tmpstr = 'UPDATE '.$tabelle.' SET ';
+
+            $j = 0;
+            $where = ' WHERE id = -1';
+            foreach($row as $spalte => $wert) 
+            {
+                if ($spalte == 'id') $where = ' WHERE id = '.$wert;
+                if (in_array($spalte, $ausschluss)) {
+                    $wert = '';
+                }
+                else {
+                    $wert = addslashes($wert);
+                    $wert = ereg_replace("\n","\\n",$wert);
+                }
+                
+                // Alle Fehler werden mit Anführungszeichen übertragen. SQL interpretiert den Inhalt bei Zahlwerten trotzdem richtig.
+                if (isset($wert)) { 
+                    $tmpstr .= $spalte.'="'.$wert.'"' ;                     
+                } else { 
+                    $tmpstr .= $spalte.'=""'; 
+                }
+                if ($j < ($num_fields-1)) { $tmpstr .= ','; }
+                $j++;
+            }
+            $tmpstr .= $where;
+
+            array_push($tab, utf8_encode($tmpstr));                      
+        }
+        
+        return $tab;
+    }
+    
     /**
      * Sync method
      *
@@ -49,7 +156,7 @@ class RegistersController extends AppController
      */
     public function syncData()
     {
-        $test = true;
+        $test = false;
         
         error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
         $message = '';
@@ -57,12 +164,14 @@ class RegistersController extends AppController
         
         // Nur per Post möglich
         if (!$test) {
-            if ($this->request->is('post')) return $this->messageEnd('Fehler');
+            if (!$this->request->is('post')) return $this->messageEnd('Fehler');
         }
       
         if ($test) {
-            $eingabe = array('modus' => 1, 'ip' => '192.168.2.201', 'registerid' => 10,
-                'maxwerte' => '{"settings":"2016-12-31 23:00:00","users":"2018-06-09 21:21:21","items":"2018-06-09 19:35:28"}');
+            $eingabe = array('modus' => 2, 'ip' => '192.168.2.201', 'registerid' => 10,
+                'maxwerte' => '{"settings":"2017-12-31 23:00:00","users":"2018-06-09 21:21:21","items":"2018-06-09 19:35:28"}',
+                'scans' => '[["10","6","123","3245324","2017-08-03 22:50:20"]]',
+                'oldscans' => 0);
         } else {
             $eingabe = $this->request->data;
         }
@@ -98,11 +207,11 @@ class RegistersController extends AppController
         }
                     
         // Neue Daten abfragen
-        $connection = ConnectionManager::get('default');              
-        $connection->execute('SET NAMES utf8');
-        
+        // Wegen Umlauten
+        $this->connection->execute('SET NAMES utf8');
         $ERLAUBT = ['settings','users','items'];
         
+        // Daten an Kasse rausschicken
         if ($modus == 1) {
             if (!array_key_exists('maxwerte', $eingabe)) return $this->messageEnd('Maxwerte fehlen'); 
             $maxwerte = json_decode($eingabe['maxwerte']);
@@ -110,89 +219,35 @@ class RegistersController extends AppController
             //$maxwerte = json_decode('{"settings":"2018-12-31 23:00:00","users":"2018-06-09 21:21:21","items":"2017-06-09 19:35:28"}');
 
             // Zeitstempel vom letzten Scan dieser Kasse holen und in $lastscan merken für modus=2
-            $statement = $connection->execute('SELECT MAX(created) AS maxval FROM sync WHERE register_id = '.$registerid)->fetchAll('assoc');
-            if ($statement) $lastscan = $statement[0]["maxval"];
+            $statement = $this->connection->execute('SELECT MAX(created) AS maxval FROM sync WHERE register_id = '.$registerid)->fetchAll('assoc');
+            if (!is_null($statement[0]["maxval"])) $lastscan = $statement[0]["maxval"];
             else $lastscan = 0;
             
             $sqlsync = [];
             $synctabelleda = true;
 
-            //tabelleLesen($tabelle, $modified, $ausschluss)
             foreach ($maxwerte as $tabelle => $maxval) {
                 if (!in_array($tabelle, $ERLAUBT)) return $this->messageEnd('Tabelle nicht erlaubt');
-                
-                $$tabelle = []; // Jede Tabelle wird in die entsprechende Variable geschrieben.
-                if ($maxval == 0) // Noch keine Daten vorhanden? Dann muss auch noch ein CREATE TABLE gemacht werden
-                {
-                    $synctabelleda = false; // Es ist anzunehmen, dass die Synctabellen auch noch nicht vorhanden sind...
-                    $sqlsync[] = 'DROP TABLE IF EXISTS '.$tabelle;
-                    $statement = $connection->execute('SHOW CREATE TABLE '.$tabelle)->fetchAll('assoc');
-                    $sqlsync[] = $statement[0]["Create Table"];                  
-                }
-
-                // Und jetzt noch die eigentlichen Daten auslesen
-                // Da die Primärschlüssel erhalten bleiben müssen und bei diesen Tabellen nur auf dem
-                // Server geschrieben werden dürfen, werden die Daten samt Schlüssel übertragen.
-                // Um bei geänderten Einträgen mit INSERTs nicht zu kollidieren, müssen ggf. vorhandene Zeilen vorm Insert gelöscht werden.
-                // Geht nur, weil die Fremdschlüsselüberwachung beim Client nicht aktiv ist!
-                $result = $connection->execute('SELECT * FROM '.$tabelle.' WHERE modified > "'.$maxval.'"')->fetchAll('num');
-                $num_fields = sizeof($result) > 0 ? sizeof($result[0]) : 0;
-
-                $tmpstr = '';
-                $delstr = '';
-                $i = 0; // Zähler wie viele Zeilen in ein Statement gepackt werden 
-                for ($o = 0; $o < sizeof($result); $o++)
-                {
-                    $row = $result[$o];
-                    if ($i == 0) {
-                        $delstr = 'DELETE FROM '.$tabelle.' WHERE id IN (';
-                        $tmpstr = 'INSERT INTO '.$tabelle.' VALUES (';
-                    }
-                    else 
-                    {
-                        $delstr .= ',';
-                        $tmpstr .= ',(';
-                    }
-
-                    $delstr .= $row[0]; // id ist jeweils die erste Spalte
-                    for($j=0; $j < $num_fields; $j++) 
-                    {
-                        $row[$j] = addslashes($row[$j]);
-                        $row[$j] = ereg_replace("\n","\\n",$row[$j]);
-                        
-                        // Alle Fehler werden mit Anführungszeichen übertragen. SQL interpretiert den Inhalt bei Zahlwerten trotzdem richtig.
-                        if (isset($row[$j])) { $tmpstr .= '"'.$row[$j].'"' ; } else { $tmpstr .= '""'; }
-                        if ($j < ($num_fields-1)) { $tmpstr .= ','; }
-                    }
-                    $tmpstr .= ")";
-                    $i++;
-
-                    if (($i >= 10) || ($o == sizeof($result) - 1)) // nach 10 Datensätzen oder wenn keine mehr übrig sind
-                    {
-                        array_push($$tabelle, $delstr.')');
-                        array_push($$tabelle, utf8_encode($tmpstr));                      
-                        $i = 0;
-                    }
-                }
+                if ($maxval == 0) $synctabelleda = false; // Es ist anzunehmen, dass die Synctabellen auch noch nicht vorhanden sind...
+                // code, also Passwort nicht mitschicken
+                $$tabelle = $this->tabelleLesen($tabelle, $maxval, ['code']);
             }
 
             // Wenn vermutet wird, dass die Sync-Tabellen noch nicht vorhanden sind, die Statements mal als IN NOT EXISTS mitschicken.
             if (!$synctabelleda)
             {
-                $statement = $connection->execute('SHOW CREATE TABLE sync')->fetchAll('assoc');
+                $statement = $this->connection->execute('SHOW CREATE TABLE sync')->fetchAll('assoc');
                 $tmpstr = $statement[0]["Create Table"];   
                 $sqlsync[] = 'CREATE TABLE IF NOT EXISTS '.substr($tmpstr, strpos($tmpstr, 'TABLE') + 5);
 
-                $statement = $connection->execute('SHOW CREATE TABLE sales')->fetchAll('assoc');
+                $statement = $this->connection->execute('SHOW CREATE TABLE sales')->fetchAll('assoc');
                 $tmpstr = $statement[0]["Create Table"];
                 $sqlsync[] = 'CREATE TABLE IF NOT EXISTS '.substr($tmpstr, strpos($tmpstr, 'TABLE') + 5);
 
-                $statement = $connection->execute('SHOW CREATE TABLE itemsales')->fetchAll('assoc');
+                $statement = $this->connection->execute('SHOW CREATE TABLE itemsales')->fetchAll('assoc');
                 $tmpstr = $statement[0]["Create View"];
                 $sqlsync[] = 'CREATE VIEW IF NOT EXISTS '.substr($tmpstr, strpos($tmpstr, 'VIEW') + 4); // Sicherheitsinfos mit rauslöschen
             }
-
-            $this->set(compact('sqlsync', 'settings', 'registers', 'users', 'items', 'message', 'lastscan'));
             
             // Nun die IP ggf. eintragen oder ändern
             if (is_null($kasse->ip) || $kasse->ip != $ip) {
@@ -207,155 +262,52 @@ class RegistersController extends AppController
             else {
                 $message = 'Wiederholter Sync erfolgreich.';
             }
+
+            $this->set(compact('sqlsync', 'settings', 'registers', 'users', 'items', 'message', 'lastscan'));
         }
         
         // Ansonsten Kassen-Scans einlesen
         else {
-            // Ist Kasse bereits eingtragen?
-            $query = $this->Registers->findByIp($ip);
-            $kasse = $query->first();
-            if ($kasse == null) // Kasse ist noch nicht eingetragen, also neu anlegen
-            {
-                $message = 'Kasse noch nicht vorhanden. Abbruch!';             
+            //$eingabe['scans'] = '[["4","2","123","3245324","2017-08-03 22:50:20"]]';
+            if (!array_key_exists('scans', $eingabe)) return $this->messageEnd('Scans nicht gesetzt'); 
+            $scans = json_decode($eingabe['scans']);
+            
+            if (!array_key_exists('oldscans', $eingabe)) return $this->messageEnd('Oldscans nicht gesetzt'); 
+            $oldscans = $eingabe['oldscans'];
+            
+            //Prüfen, ob die Anzahl der alten Scans stimmt
+            $statement = $this->connection->execute('SELECT COUNT(*) AS anz FROM sync WHERE register_id = '.$registerid)->fetchAll('assoc');
+            if (!is_null($statement[0]["anz"])) $scansindb = $statement[0]["anz"];
+            else $scansindb = 0;
+            if ($oldscans != $scansindb) {
+                // Scans dieser Kasse ablöschen
+                $statement = $this->connection->execute('DELETE FROM sync WHERE register_id = '.$registerid);
+                $anz = $statement->rowCount();
+                return $this->messageEnd('Oldscans stimmt nicht mit Einträgen überein. '.$anz.' alte Scans der Kasse gelöscht!');
             }
-            else 
-            {
-                $scans = json_decode($eingabe['scans']);
-                Log::write('debug', 'scans:'.print_r($scans, true));
-                // Scans in Datenbank eintragen
-                if ($scans) {
-                    $num_fields = sizeof($scans[0]);
-                    Log::write('debug', 'Numfields:'.$num_fields);
-                    $tmpstr = '';
-                    $i = 0; // Zähler wie viele Zeilen in ein Statement gepackt werden 
-                    for ($o = 0; $o < sizeof($scans); $o++)
-                    {
-                        $row = $scans[$o];
-                        if ($i == 0) {
-                            $tmpstr = 'INSERT INTO sync VALUES (';
-                        }
-                        else 
-                        {
-                            $tmpstr .= ',(';
-                        }
-
-                        for($j=0; $j < $num_fields; $j++) 
-                        {
-                            $row[$j] = addslashes($row[$j]);
-                            $row[$j] = ereg_replace("\n","\\n",$row[$j]);
-                            if (isset($row[$j])) { $tmpstr .= '"'.$row[$j].'"' ; } else { $tmpstr .= '""'; }
-                            if ($j < ($num_fields-1)) { $tmpstr .= ','; }
-                        }
-                        $tmpstr .= ")";
-                        $i++;
-
-                        if (($i >= 10) || ($o == sizeof($scans) - 1)) // nach 10 Datensätzen oder wenn keine mehr übrig sind
-                        {
-                            Log::write('debug', 'SQL:'.$tmpstr);
-                            $statement = $connection->execute($tmpstr)->fetchAll('assoc');
-                            $i = 0;
-                        }
-                    } 
-                    $message = 'Neue Scans übertragen.';
-                }
-                else {
-                    $message = 'Keine neuen Scans übertragen.';
-                }
-      
-                Log::write('debug', print_r($scans, true));
-                $message = 'Scans in Datenbank eingetragen!'; 
-            }
-            $this->set(compact('message'));
-        }
-        
-        $this->viewBuilder()->setLayout('ajax');	        
-    }
-    
-    
-    
-    /**
-     * Sync method
-     *
-     * @param string|null $id Register id.
-     * @return void
-     * @throws \Cake\Network\Exception\NotFoundException When record not found.
-     */
-    public function syncScans()
-    {
-        error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
-        
-        if ($this->request->is('post')) {
-            $eingabe = $this->request->data;
-            //$ip = '192.168.2.201';
-            $ip = $eingabe['ip'];
-            $maxwerte = json_decode($eingabe['maxwerte']);
-            //$maxwerte = json_decode('{"settings":0,"users":0,"items":0}');
-            //$maxwerte = json_decode('{"settings":"2018-12-31 23:00:00","users":"2018-06-09 21:21:21","items":"2017-06-09 19:35:28"}');
             
-            // Ist Kasse bereits eingtragen?
-            $query = $this->Registers->findByIp($ip);
-            $kasse = $query->first();
-            if ($kasse == null) // Kasse ist noch nicht eingetragen, also neu anlegen
-            {
-                $register = $this->Registers->newEntity();
-                $register->ip = $ip;
-                $register->active = true;
-                $register->local = false;
-                $register->syncEn = true;
-                if ($this->Registers->save($register)) {
-                    $message = 'Kasse neu angelegt';
-                } else {
-                    $message = 'Kasse konnte nicht angelegt werden';
-                }             
-            }
-            else // Kasse ist bereits eingetragen. Nichts tun.
-            {
-                $message = 'Kasse bereits eingetragen';
-            }
-            $register = json_encode($kasse);
-            
-            
-            // Neue Daten abfragen
-            $connection = ConnectionManager::get('default');              
-            $connection->execute('SET NAMES utf8');
-            
-            $sqlsync = array();
-            $synctabelleda = true;
-            
-            foreach ($maxwerte as $tabelle => $maxval) {
-                $$tabelle = array(); // Jede Tabelle wird in die entsprechende Variable geschrieben.
-                if ($maxval == 0) // Noch keine Daten vorhaben? Dann muss auch noch ein CREATE TABLE gemacht werden
-                {
-                    $synctabelleda = false;
-                    $sqlsync[] = 'DROP TABLE IF EXISTS '.$tabelle;
-                    $statement = $connection->execute('SHOW CREATE TABLE '.$tabelle)->fetchAll('assoc');
-                    $sqlsync[] = $statement[0]["Create Table"];                  
-                }
-
-                // Und jetzt noch die eigentlichen Daten auslesen
-                // Da die Primärschlüssel erhalten bleiben müssen und bei diesen Tabellen nur auf dem
-                // Server geschrieben werden dürfte und muss, werden die Daten samt Schlüssel übertragen.
-                // Um mit den INSERTs nicht zu kollidieren, müssen ggf. vorhandene Zeilen vorm Insert gelöscht werden.
-                $result = $connection->execute('SELECT * FROM '.$tabelle.' WHERE modified > "'.$maxval.'"')->fetchAll('num');
-                $num_fields = sizeof($result) > 0 ? sizeof($result[0]) : 0;
-
+            //Log::write('debug', 'scans:'.print_r($scans, true));
+            // Scans in Datenbank eintragen
+            if ($scans) {
+                $num_fields = sizeof($scans[0]);
+                //Log::write('debug', 'Numfields:'.$num_fields);
                 $tmpstr = '';
-                $delstr = '';
                 $i = 0; // Zähler wie viele Zeilen in ein Statement gepackt werden 
-                for ($o = 0; $o < sizeof($result); $o++)
+                for ($o = 0; $o < sizeof($scans); $o++)
                 {
-                    $row = $result[$o];
+                    $row = $scans[$o];
+                    
+                    // Jede Kasse darf nur eigene Einträge senden. Kann, muss aber nicht so sein.
+                    if ($row[0] != $kasse->id) return $this->messageEnd('Eintrag ungültiger Kasse!');
+                    
                     if ($i == 0) {
-                        $delstr = 'DELETE FROM '.$tabelle.' WHERE id IN (';
-                        $tmpstr = 'INSERT INTO '.$tabelle.' VALUES (';
+                        $tmpstr = 'INSERT INTO sync VALUES (';
                     }
                     else 
                     {
-                        $delstr .= ',';
                         $tmpstr .= ',(';
                     }
-                    
-                    $delstr .= $row[0]; // id ist jeweils die erste Spalte
+
                     for($j=0; $j < $num_fields; $j++) 
                     {
                         $row[$j] = addslashes($row[$j]);
@@ -365,33 +317,37 @@ class RegistersController extends AppController
                     }
                     $tmpstr .= ")";
                     $i++;
-                    
-                    if (($i >= 10) || ($o == sizeof($result) - 1)) // nach 10 Datensätzen oder wenn keine mehr übrig sind
+
+                    if (($i >= 10) || ($o == sizeof($scans) - 1)) // nach 10 Datensätzen oder wenn keine mehr übrig sind
                     {
-                        array_push($$tabelle, $delstr.')');
-                        array_push($$tabelle, utf8_encode($tmpstr));                      
+                        //Log::write('debug', 'SQL:'.$tmpstr);
+                        $statement = $this->connection->execute($tmpstr);
+                        $anzahl = $statement->rowCount();
+                        //Log::write('debug', 'RET:'.$anzahl);
                         $i = 0;
                     }
-                }
+                } 
+                $message = 'Neue Scans übertragen.';
             }
+            else {
+                $message = 'Keine neuen Scans übertragen.';
+            }
+
+            //Log::write('debug', print_r($scans, true));
             
-            // Wenn die anderen Tabellen nicht vorhanden sind, dann die Sync-Tabelle auch nicht
-            if (!$synctabelleda)
-            {
-                $statement = $connection->execute('SHOW CREATE TABLE sync')->fetchAll('assoc');
-                $sqlsync[] = $statement[0]["Create Table"];   
-                $statement = $connection->execute('SHOW CREATE TABLE sales')->fetchAll('assoc');
-                $sqlsync[] = $statement[0]["Create Table"];
-                $statement = $connection->execute('SHOW CREATE TABLE itemsales')->fetchAll('assoc');
-                $sqlsync[] = $statement[0]["Create Table"];                  
+            $kasse->lastSync = date('Y-m-d H:i:s');
+            if ($this->Registers->save($kasse)) {
+                $message = 'Scans erfolgreich eingetragen.';
             }
-            $this->set(compact('sqlsync', 'settings', 'users', 'items', 'message'));    
+            else {
+                $message = 'Scans eingetragen. Sync nicht geschrieben.';
+            }        
+            
+            $this->set(compact('message'));
         }
         
-        $this->layout = 'ajax';	        
-    }    
-    
-    
+        $this->viewBuilder()->setLayout('ajax');	        
+    }
     
     
     /**

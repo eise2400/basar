@@ -6,3 +6,4 @@
 /logs/debug.log
 /logs/error.log
 .buildpath
+/logs/cli-error.log

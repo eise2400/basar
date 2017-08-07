@@ -33,7 +33,7 @@ class UsersTable extends Table
             'dependent' => true
         ]);
         $this->hasOne('Registers', [
-            'className' => 'Items',            
+            'className' => 'Registers',            
             'foreignKey' => 'user_id',
             'dependent' => false
         ]);
