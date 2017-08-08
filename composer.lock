@@ -54,16 +54,16 @@
         },
         {
             "name": "cakephp/cakephp",
-            "version": "3.4.11",
+            "version": "3.4.12",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cakephp/cakephp.git",
-                "reference": "c90f9d2ef2376f8e4d9cca39d971053707645118"
+                "reference": "e5be62241953ee90f3ec121fce3bf8074518d4be"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cakephp/cakephp/zipball/c90f9d2ef2376f8e4d9cca39d971053707645118",
-                "reference": "c90f9d2ef2376f8e4d9cca39d971053707645118",
+                "url": "https://api.github.com/repos/cakephp/cakephp/zipball/e5be62241953ee90f3ec121fce3bf8074518d4be",
+                "reference": "e5be62241953ee90f3ec121fce3bf8074518d4be",
                 "shasum": ""
             },
             "require": {
@@ -136,7 +136,7 @@
                 "rapid-development",
                 "validation"
             ],
-            "time": "2017-07-19T01:43:53+00:00"
+            "time": "2017-08-02T01:15:12+00:00"
         },
         {
             "name": "cakephp/chronos",
@@ -197,16 +197,16 @@
         },
         {
             "name": "cakephp/migrations",
-            "version": "1.7.0",
+            "version": "1.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cakephp/migrations.git",
-                "reference": "419e044585d51cee5f2e469c34c28bd10abd7406"
+                "reference": "90d427d0a1ae974e4d6795cf8310724d0a5c07db"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cakephp/migrations/zipball/419e044585d51cee5f2e469c34c28bd10abd7406",
-                "reference": "419e044585d51cee5f2e469c34c28bd10abd7406",
+                "url": "https://api.github.com/repos/cakephp/migrations/zipball/90d427d0a1ae974e4d6795cf8310724d0a5c07db",
+                "reference": "90d427d0a1ae974e4d6795cf8310724d0a5c07db",
                 "shasum": ""
             },
             "require": {
@@ -245,7 +245,7 @@
                 "cakephp",
                 "migrations"
             ],
-            "time": "2017-08-01T09:31:55+00:00"
+            "time": "2017-08-05T13:16:31+00:00"
         },
         {
             "name": "cakephp/plugin-installer",
@@ -1075,16 +1075,16 @@
         },
         {
             "name": "composer/composer",
-            "version": "1.4.2",
+            "version": "1.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/composer/composer.git",
-                "reference": "489e09ee6c3ba431fbeeef9147afdaeb6f91b647"
+                "reference": "6f3310c762b658bca64e060262ea2b1d4a1ec4b0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/composer/composer/zipball/489e09ee6c3ba431fbeeef9147afdaeb6f91b647",
-                "reference": "489e09ee6c3ba431fbeeef9147afdaeb6f91b647",
+                "url": "https://api.github.com/repos/composer/composer/zipball/6f3310c762b658bca64e060262ea2b1d4a1ec4b0",
+                "reference": "6f3310c762b658bca64e060262ea2b1d4a1ec4b0",
                 "shasum": ""
             },
             "require": {
@@ -1117,7 +1117,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "1.4-dev"
+                    "dev-master": "1.5-dev"
                 }
             },
             "autoload": {
@@ -1148,7 +1148,7 @@
                 "dependency",
                 "package"
             ],
-            "time": "2017-05-17T06:17:53+00:00"
+            "time": "2017-08-08T09:08:05+00:00"
         },
         {
             "name": "composer/semver",

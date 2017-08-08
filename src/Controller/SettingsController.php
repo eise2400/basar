@@ -20,7 +20,7 @@ class SettingsController extends AppController
     {
         $this->paginate = [
             'limit' => 30,		
-            'order' => [ 'Users.name' => 'asc' ]
+            'order' => [ 'Settings.name' => 'asc' ]
         ];
         $this->set('settings', $this->paginate($this->Settings));
         $this->set('_serialize', ['settings']);

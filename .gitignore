@@ -7,3 +7,5 @@
 /logs/error.log
 .buildpath
 /logs/cli-error.log
+/vendor/
+/logs/cli-debug.log

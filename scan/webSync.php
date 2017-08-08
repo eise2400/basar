@@ -168,7 +168,9 @@ function syncWeb()
     $sql = 'SELECT * FROM sync WHERE register_id = '.$registerid.' AND created > "'.$lastscan.'"';
     $result = $con->query($sql);
     if ($result) {
-        $scans = mysqli_fetch_all($result);
+        $scans = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        // Jede Kasse und der Server müssen selber buchen. Daher alle gebucht = 0 setzen
+        for ($i=0; $i < sizeof($scans); $i++) $scans[$i]['gebucht'] = 0;
     }   
     
     // Außerdem ermitteln, wie viele Scans dieser Kasse schon auf dem Server sein müssten.
@@ -221,7 +223,10 @@ function syncWeb()
                 $nachricht .= ' '.$werte;
             }
         }
-    }        
+    }
+    else {
+        $nachricht .= ' Fehler bei Phase 2';
+    }
     
     // Antwort schreiben für den Aufruf über ajax sync.html
     $retArray = array('action' => 'WEB', 'groesse' => $tabellengroesse, 'zeit' => date('H:i:s'), 'lastscan' => $lastscan, 'message' => $nachricht);

@@ -46,10 +46,6 @@ class SyncTable extends Table
             'foreignKey' => 'register_id',
             'joinType' => 'INNER'
         ]);
-        $this->belongsTo('RegItems', [
-            'foreignKey' => 'reg_item_id',
-            'joinType' => 'INNER'
-        ]);
         $this->belongsTo('Items', [
             'foreignKey' => 'item_id',
             'joinType' => 'INNER'
@@ -69,6 +65,16 @@ class SyncTable extends Table
             ->requirePresence('barcode', 'create')
             ->notEmpty('barcode');
 
+        $validator
+            ->integer('art')
+            ->requirePresence('art', 'create')
+            ->notEmpty('art');
+
+        $validator
+            ->boolean('gebucht')
+            ->requirePresence('gebucht', 'create')
+            ->notEmpty('gebucht');
+
         return $validator;
     }
 
@@ -82,7 +88,6 @@ class SyncTable extends Table
     public function buildRules(RulesChecker $rules)
     {
         $rules->add($rules->existsIn(['register_id'], 'Registers'));
-        $rules->add($rules->existsIn(['reg_item_id'], 'RegItems'));
         $rules->add($rules->existsIn(['item_id'], 'Items'));
 
         return $rules;

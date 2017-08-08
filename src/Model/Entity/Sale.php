@@ -4,21 +4,13 @@ namespace App\Model\Entity;
 use Cake\ORM\Entity;
 
 /**
- * Sync Entity
+ * Sale Entity
  *
- * @property int $register_id
- * @property int $reg_item_id
- * @property int $item_id
- * @property int $barcode
- * @property int $art
- * @property bool $gebucht
- * @property \Cake\I18n\Time $created
- *
- * @property \App\Model\Entity\Register $register
- * @property \App\Model\Entity\RegItem $reg_item
- * @property \App\Model\Entity\Item $item
+ * @property int $id
+ * @property bool $verkauft
+ * @property \Cake\I18n\Time $modified
  */
-class Sync extends Entity
+class Sale extends Entity
 {
 
     /**
@@ -32,7 +24,6 @@ class Sync extends Entity
      */
     protected $_accessible = [
         '*' => true,
-        'register_id' => false,
-        'reg_item_id' => false
+        'id' => false
     ];
 }
