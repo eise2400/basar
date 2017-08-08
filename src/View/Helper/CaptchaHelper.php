@@ -57,7 +57,6 @@ class CaptchaHelper extends Helper {
             'type' =>   $this->_config['type'],
             'field' =>  $field
         );
-
         switch( $this->_config['type']):
             case 'image':
 

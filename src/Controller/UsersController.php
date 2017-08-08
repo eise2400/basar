@@ -44,7 +44,7 @@ class UsersController extends AppController
     
     public function captcha()  {
         $this->autoRender = false;
-        $this->layout = 'ajax';
+        $this->viewBuilder()->setLayout('ajax');
         $this->Captcha->create(array('type' => 'math'));
     }
     
@@ -56,7 +56,7 @@ class UsersController extends AppController
         $action = $this->request->params['action'];
 
         // The add and index actions are always allowed.
-        if (in_array($action, ['edit', 'logout', 'moremax'])) {
+        if (in_array($action, ['edit', 'logout', 'moremax', 'captcha'])) {
             return true;
         }
         

@@ -1,3 +1,4 @@
+<?php ?>
 <div class="actions columns large-2 medium-3">
     <ul class="side-nav">
         <li><?= $this->Html->link('zurück', ['controller' => 'Users', 'action' => 'login'], ['class' => 'button radius']) ?></li>
@@ -12,7 +13,8 @@
             echo $this->Form->input('vorname');
             echo $this->Form->input('telefon');
             echo $this->Form->input('email', array('type' => 'email', 'allowEmpty' => 'false'));
-            echo $this->Captcha->create('securitycode', array('type' => 'math')); 
+            echo $this->Captcha->create('securitycode', array('type' => 'image', 'fontAdjustment' => 1)); 
+
         ?>
     </fieldset>
     <?= $datenschutzhinweis ?>

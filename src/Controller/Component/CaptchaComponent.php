@@ -118,7 +118,7 @@
       'default'=>array(
         'bgcolor'=>array(200,200, 200),
         'txtcolor'=>array(10, 30, 80),
-        'noisecolor'=>array(60, 90, 120)
+        'noisecolor'=>array(160, 90, 120)
       )
     );
 
@@ -137,7 +137,7 @@
       'field' => 'captcha',
       'rotate' => true,
       'reload_txt' => 'Sicherheitscode nicht lesbar? Klicken Sie hier um einen neuen zu laden.',
-      'clabel' => 'Enter security code shown above:',
+      'clabel' => 'Bitte hier den Sicherheitscode eingeben:',
       'mlabel' => 'Bitte lösen Sie zur Überprüfung diese einfache Aufgabe:'
        
     );
@@ -220,7 +220,7 @@
     function __AlphaNumeric() {
 
       /* list all possible characters ; similar looking characters and vowels have been ommitted */
-      $possible = '23456789bcdfghjkmnpqrstvwxyz';//ABCDFGHJKMNPRSTVWXYZ
+      $possible = '23456789bcdfghjkmnpqrstvwxz';//ABCDFGHJKMNPRSTVWXYZ
 
       $code = '';$i = 0;
       while ($i < $this->settings['length']) { 
@@ -332,8 +332,8 @@
     }
 
     function __imageCaptcha() {
-        $width = $this->settings['width'];
-        $height = $this->settings['height'];
+        $width = $this->settings['width'] / 2;
+        $height = $this->settings['height'] / 2;
         $this->__prepareThemes();
         $theme = $this->settings['theme'];
         if(!$this->__TTFEnabled())  {
@@ -357,7 +357,7 @@
         }
         /* generate random lines in background */
         for( $i=0; $i<($width*$height)/150; $i++ ) {
-            imageline($image, mt_rand(0,$width), mt_rand(0,$height), mt_rand(0,$width), mt_rand(0,$height), $noise_color);
+            //imageline($image, mt_rand(0,$width), mt_rand(0,$height), mt_rand(0,$width), mt_rand(0,$height), $noise_color);
         }
 
         /* create textbox and add text */
@@ -368,7 +368,8 @@
             if($this->settings['rotate']) {
                 $angle = rand(-15, 15);
             }
-            
+            $this->settings['font'] = 'droidsans.ttf';
+            pr($this->settings['font']);
             $textbox = imagettfbbox($font_size, $angle, $this->settings['font'], $code) or die('Error in imagettfbbox function');
             $x = ($width - $textbox[4])/2;
             $y = ($height - $textbox[5])/2;
@@ -376,7 +377,7 @@
             imagettftext($image, $font_size, $angle, $x, $y, $text_color, $this->settings['font'] , $code) or die('Error in imagettftext function');
         } else if(function_exists("imagestring"))  {
             //$font_size = imageloadfont($this->settings['font']);
-            $textbox = imagestring($image, 5, 5, 5, $code, $text_color) or die('Error in imagestring function');
+            $textbox = imagestring($image, 5, 2, 1, $code, $text_color) or die('Error in imagestring function');
         } else  {
             $this->__setError("Cannot use image captcha without GD Library enabled!");
         }
@@ -389,6 +390,7 @@
 
         /* output captcha image to browser */
         header('Content-Type: image/jpeg');
+        $image = imagescale($image, $width * 2.5, $height * 2.5);
         imagejpeg($image);
         imagedestroy($image);
     }
