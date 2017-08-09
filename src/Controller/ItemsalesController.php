@@ -2,6 +2,7 @@
 namespace App\Controller;
 
 use App\Controller\AppController;
+use Cake\Log\Log;
 
 /**
  * Itemsales Controller
@@ -12,40 +13,35 @@ use App\Controller\AppController;
  */
 class ItemsalesController extends AppController
 {
-
-//    /**
-//     * Index method
-//     *
-//     * @return \Cake\Http\Response|void
-//     */
-//    public function index()
-//    {
-//        $this->paginate = [
-//            'contain' => ['Users']
-//        ];
-//        $itemsales = $this->paginate($this->Itemsales);
-//
-//        $this->set(compact('itemsales'));
-//        $this->set('_serialize', ['itemsales']);
-//    }
-//
-//    /**
-//     * View method
-//     *
-//     * @param string|null $id Itemsale id.
-//     * @return \Cake\Http\Response|void
-//     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
-//     */
-//    public function view($id = null)
-//    {
-//        $itemsale = $this->Itemsales->get($id, [
-//            'contain' => ['Users']
-//        ]);
-//
-//        $this->set('itemsale', $itemsale);
-//        $this->set('_serialize', ['itemsale']);
-//    }
-
+    private $benutzer; // Variable für den derzeit verarbeiteten Benutzer
+    
+    private function _parseBrief($input) {
+        $regex = '|@@(.+?)@@|';
+        return preg_replace_callback($regex, array($this, '_ersetzungen'), $input);
+    }
+    
+    // Ersetzungen beim Druck
+    private function _ersetzungen($input) {
+        switch ($input[1]) {
+            case 'NAME':    
+                $input = $this->benutzer['vorname'].' '.$this->benutzer['name'];
+                break;
+            case 'LISTE':
+                $input = $this->benutzer['nummer'];
+                break;     
+            case 'NEUESEITE':
+                $input = '<div style="page-break-after:always">&nbsp;</div>';
+                break;
+            case 'BARCODE':
+                //$input = self::ean8($this->code1.'00'.$this->code2, false);
+                $input = self::ean8($this->barcodeerzeugen($this->benutzer, null), false);
+                break;                
+            default:
+                $input = $input[0];
+                break;
+        }
+        return $input;
+    }    
     
     // Abrechnung drucken
     public function abrechnung_drucken($id = null) {
@@ -54,7 +50,7 @@ class ItemsalesController extends AppController
         error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
 
         $old_limit = ini_set('memory_limit', '128M');
-        require_once(ROOT . DS . 'vendor/dompdf/dompdf_config.inc.php');
+        require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');
 
         // Benutzer holen für Listennummer
         $this->loadModel('Users');
@@ -66,12 +62,16 @@ class ItemsalesController extends AppController
             foreach ($this->request->data['user_id'] as $uid => $wert) {
                 if ($wert) $zudrucken .= $uid.',';
             }
+            if ($zudrucken == '(') {
+                $this->Flash->error(__('Kein Benutzer gewählt!'));
+                return $this->redirect(['controller' => 'users', 'action' => 'indexAbrechnung']);            
+            }
             $zudrucken .= '-1)';
         } elseif ($id != null) {
             $zudrucken = '('.$id.')';
         } else {
             $this->Flash->error(__('Kein Benutzer gewählt!'));
-            return $this->redirect(['controller' => 'users', 'action' => 'index_abrechnung']);            
+            return $this->redirect(['controller' => 'users', 'action' => 'indexAbrechnung']);            
         }
 
         //print_r($this->request->data['user_id']);
@@ -83,7 +83,7 @@ class ItemsalesController extends AppController
         ]);
 
         $benutzerliste = $query->toArray();
-        //print_r($benutzerliste);
+        //print_r($zudrucken);
         //return;
 
         $text = AppController::getSetting('Listenformatierung');     
@@ -103,22 +103,25 @@ class ItemsalesController extends AppController
                     'Itemsales.nummer' => 'asc'
                 ]
             ];
-            $verkauft = $this->paginate($this->Items);
+            $verkauft = $this->paginate($this->Itemsales);
 
             // Nicht verkaufte Artikel des Benutzers holen
             $this->paginate = [
                 'limit' => 100,		
                 'conditions' => [
                     'Itemsales.user_id' => $this->benutzer['id'],                    
-                    'Itemsales.verkauft' => false,
+                    'or' => [ 
+                        'Itemsales.verkauft IS NULL',
+                        'Itemsales.verkauft' => false
+                    ]
                 ],
                 'order' => [
                     'Itemsales.nummer' => 'asc'
                 ]
             ];
-            $unverkauft = $this->paginate($this->Items);            
+            $unverkauft = $this->paginate($this->Itemsales);            
             
-            // Hat ein Benutzer keine Artikel abgegeben, dann muss nihts gedruckt werden
+            // Hat ein Benutzer keine Artikel abgegeben, dann muss nichts gedruckt werden
             $anzArtikel = sizeof($verkauft) + sizeof($unverkauft);
             if (sizeof($verkauft) + sizeof($unverkauft) == 0) continue;
             
@@ -232,9 +235,10 @@ class ItemsalesController extends AppController
             }
         }    
         
-        //pr($text);
+        
         $text = $this->_parseBrief($text); 
-                
+        Log::write('debug', print_r($text, true));
+        
         $dompdf = new \DOMPDF();
         $dompdf->load_html($text);
         $dompdf->render();

@@ -9,3 +9,4 @@
 /logs/cli-error.log
 /vendor/
 /logs/cli-debug.log
+/nbproject/private/

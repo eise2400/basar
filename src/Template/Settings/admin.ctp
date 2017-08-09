@@ -1,11 +1,10 @@
 <div class="actions columns large-2 medium-3">
     <!-- <h3><?= __('Aktionen') ?></h3> -->
     <ul class="side-nav">
-        <li><?= $this->Html->link(__('Einstellungen', true), ['controller' => 'Settings', 'action' => 'index'], ['class' => 'button radius success']) ?></li>
+        <li><?= $this->Html->link(__('Grund- einstellungen', true), ['controller' => 'Settings', 'action' => 'index'], ['class' => 'button radius success']) ?></li>
         <li><?= $this->Html->link(__('Listen & Benutzer', true), ['controller' => 'Users', 'action' => 'index'], ['class' => 'button radius success']) ?></li>
-        <li><?= $this->Html->link(__('Abrechnung drucken', true), ['controller' => 'Users', 'action' => 'indexAbrechnung'], ['class' => 'button radius success']) ?></li>
         <li><?= $this->Html->link(__('Kassen- verwaltung', true), ['controller' => 'Registers', 'action' => 'index'], ['class' => 'button radius success']) ?></li>
-        <li><?= $this->Html->link(__('Daten herunterladen', true), ['controller' => 'Settings', 'action' => 'export'], ['class' => 'button radius success']) ?></li>
+        <li><?= $this->Html->link(__('Abrechnung drucken', true), ['controller' => 'Users', 'action' => 'indexAbrechnung'], ['class' => 'button radius success']) ?></li>
         <li><?= $this->Html->link(__('abmelden'), ['controller' => 'Users', 'action' => 'logout'], ['class' => 'button radius alert']) ?></li>        
     </ul>
 </div>

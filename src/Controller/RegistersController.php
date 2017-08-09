@@ -205,11 +205,11 @@ class RegistersController extends AppController
 
         $tables = ['settings','users','items'];
         foreach ($tables as $tabelle) {
-            array_push($sqlsync, $this->tabelleLesen($tabelle, 0, ['code'], false));
+            $sqlsync = array_merge($sqlsync, $this->tabelleLesen($tabelle, 0, ['code'], null, false));
         }
         // Nur die eigene Kasse mit übertragen
-        array_push($sqlsync, $this->tabelleLesen('registers', 0, [], $id), false);
-        array_push($sqlsync, $this->getSyncTableSQL());
+        $sqlsync = array_merge($sqlsync, $this->tabelleLesen('registers', 0, [], $kasse->id, false));
+        $sqlsync = array_merge($sqlsync, $this->getSyncTableSQL());
  	
         $return = implode(";\n", $sqlsync);
 

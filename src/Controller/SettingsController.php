@@ -154,74 +154,8 @@ class SettingsController extends AppController
     }  
     
     
-    public function import() {
-        // Datei einlesen
-        // Bei Users gebuehr neu berechnen und ggf. prozentsatz aus settings schreiben
-    }
-    
-    
-    public function export($tables = ['settings', 'users', 'items'])
-    {	
-        
-        $connection = ConnectionManager::get('default');   
-        $connection->execute('SET NAMES utf8');  
-        $return = '';
-        
-        //get all of the tables
-	if($tables == '*')
-	{
-            $tables = array();
-            $result = mysql_query('SHOW TABLES');
-            while($row = mysql_fetch_row($result))
-            {
-                $tables[] = $row[0];
-            }
-	}
-	else
-	{
-            $tables = is_array($tables) ? $tables : explode(',',$tables);
-	}
-	
-	//cycle through
-	foreach($tables as $table)
-	{
-            $result = $connection->execute('SELECT * FROM '.$table)->fetchAll('num');
-            $num_fields = sizeof($result[0]);
-            $return.= 'DROP TABLE IF EXISTS '.$table.';';
-            $row2 = $connection->execute('SHOW CREATE TABLE '.$table)->fetchAll('assoc');
-            $return.= "\n\n".$row2[0]["Create Table"].";\n\n";
-
-            for ($o = 0; $o < sizeof($result); $o++)
-            {
-                $row = $result[$o];
-                $return.= 'INSERT INTO '.$table.' VALUES(';
-                for($j=0; $j < $num_fields; $j++) 
-                {
-                    $row[$j] = addslashes($row[$j]);
-                    $row[$j] = ereg_replace("\n","\\n",$row[$j]);
-                    if (isset($row[$j])) { $return.= '"'.$row[$j].'"' ; } else { $return.= '""'; }
-                    if ($j < ($num_fields-1)) { $return.= ','; }
-                }
-                $return.= ");\n";
-            }
-
-            $return.="\n\n\n";
-	}
-	/*
-	$this->set('sql', $return);
-	$this->layout = 'plaintxt';
-	$this->set('filename', 'basar.sql');
-        */
-        $this->response->body($return);
-        $this->response->type('txt');
-
-        // Optionally force file download
-        $this->response->download('basar.sql');
-
-        // Return response object to prevent controller from trying to render
-        // a view.
-        return $this->response;        
-    }
-    
-    
+//    public function import() {
+//        // Datei einlesen
+//        // Bei Users gebuehr neu berechnen und ggf. prozentsatz aus settings schreiben
+//    }
 }

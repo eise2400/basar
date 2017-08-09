@@ -4,7 +4,7 @@
     </ul>
 </div>
 <div class="users index large-10 medium-9 columns">
-    <?= $this->Form->create(null, ['id' => 'UsersForm', 'url' => ['controller' => 'Items', 'action' => 'abrechnung_drucken']]) ?>    
+    <?= $this->Form->create(null, ['id' => 'UsersForm', 'url' => ['controller' => 'itemsales', 'action' => 'abrechnung_drucken']]) ?>    
     <table cellpadding="0" cellspacing="0">
     <thead>
         <tr>
@@ -20,7 +20,7 @@
             <td><?= ($user->name)? ($user->name.' '.$user->vorname) : '<i>kein</i>' ?></td>
             <td class="actions">
                 <?= $this->Html->link(__('Anzeigen'), ['action' => 'view', $user->id], ['class' => 'button micro radius']) ?>
-                <?= $this->Html->link(__('Abrechnung'), ['controller' => 'Items', 'action' => 'abrechnung_drucken', $user->id], ['class' => 'button micro radius']) ?>
+                <?= $this->Html->link(__('Abrechnung'), ['controller' => 'itemsales', 'action' => 'abrechnung_drucken', $user->id], ['class' => 'button micro radius']) ?>
             </td>
         </tr>
 

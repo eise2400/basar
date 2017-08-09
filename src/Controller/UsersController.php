@@ -90,7 +90,7 @@ class UsersController extends AppController
                 'Users.vorname' => 'asc'
             ],
             'conditions' => [ 
-                'Users.nummer !=' => 'admin',
+                'Users.gruppe =' => 'V',
                 'Users.nummer >0'
             ]
         ];        
@@ -349,21 +349,25 @@ class UsersController extends AppController
                 $this->Flash->success('Registrierung erfolgreich. Ihre Zugangsdaten haben wir Ihnen eben per E-Mail zugeschickt.');                   
             } else {
                 $user->nummer = $this->naechsteListe();
-                $user->emailok = 1;
-                $user->code = rand(10000000, 99999999);
-                $user->prozentsatz = AppController::getSetting('Prozent');
-                // 
-                $user->gebuehr = 0; //AppController::getSetting('Listengebühr');
-                $user->maxitems = AppController::getSetting('Listenlänge');
+                if ($user->nummer) {
+                    $user->emailok = 1;
+                    $user->code = rand(10000000, 99999999);
+                    $user->prozentsatz = AppController::getSetting('Prozent');
+                    // 
+                    $user->gebuehr = 0; //AppController::getSetting('Listengebühr');
+                    $user->maxitems = AppController::getSetting('Listenlänge');
 
-                if ($this->Users->save($user)) {
-                    $this->werte = ['name' => $user->name, 'vorname' => $user->vorname, 'nummer' => $user->nummer, 
-                                    'code' => $user->code, 'emailcode' => $user->emailcode, 'email' => $user->email];                
-                    $nachricht = $this->_parseEMail(AppController::getSetting('EMail-Zugangsdaten'));                
-                    $this->sendeEmail([$user->email, $user->name.' '.$user->vorname], $nachricht, 'Ihre Zugangsdaten für basar-teugn.de');
-                    $this->Flash->success('Registrierung erfolgreich. Ihre Zugangsdaten haben wir Ihnen eben per E-Mail zugeschickt.');
+                    if ($this->Users->save($user)) {
+                        $this->werte = ['name' => $user->name, 'vorname' => $user->vorname, 'nummer' => $user->nummer, 
+                                        'code' => $user->code, 'emailcode' => $user->emailcode, 'email' => $user->email];                
+                        $nachricht = $this->_parseEMail(AppController::getSetting('EMail-Zugangsdaten'));                
+                        $this->sendeEmail([$user->email, $user->name.' '.$user->vorname], $nachricht, 'Ihre Zugangsdaten für basar-teugn.de');
+                        $this->Flash->success('Registrierung erfolgreich. Ihre Zugangsdaten haben wir Ihnen eben per E-Mail zugeschickt.');
+                    } else {
+                        $this->Flash->error('Registrierung nicht erfolgreich.');   
+                    }
                 } else {
-                    $this->Flash->error('Registrierung nicht erfolgreich.');   
+                    $this->Flash->error('Registrierung nicht erfolgreich.');
                 }
             }
         }
@@ -548,7 +552,7 @@ class UsersController extends AppController
                 $benutzer->letzterlogin = Time::now();
                 $this->Users->save($benutzer);
                 
-                if ($user['nummer'] == "admin") {
+                if ($user['gruppe'] == "A") {
                     return $this->redirect(['controller' => 'Settings', 'action' => 'admin']);
                 } else {
                     return $this->redirect(['controller' => 'Items', 'action' => 'index']);
@@ -573,7 +577,7 @@ class UsersController extends AppController
             $user = $this->Auth->identify();
             if ($user) {
                 $this->Auth->setUser($user);
-                if ($user['nummer'] == "admin") {
+                if ($user['gruppe'] == "A") {
                     return $this->redirect(['controller' => 'Settings', 'action' => 'admin']);
                 } else {
                     return $this->redirect(['controller' => 'Items', 'action' => 'index']);
@@ -611,7 +615,7 @@ class UsersController extends AppController
         error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
 
         $old_limit = ini_set('memory_limit', '128M');
-        require_once(ROOT . DS . 'vendor/dompdf/dompdf_config.inc.php');
+        require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');        
 
         if ($this->request->is('post')) {
             $text = AppController::getSetting('Listenformatierung');            
