@@ -193,21 +193,7 @@ class ItemsController extends AppController
         $this->set('_serialize', ['item']);
     }
 
-	
-    public function ajaxview()
-    {
-        $this->paginate = ['limit' => 5 ];
-        $this->set('item', $this->paginate($this->Items));
 
-        //$id = $this->request->query('scan');
-        //if ($id == null) $id = 21;
-        //$item = $this->Items->get($id);
-        //$this->set('item', $item);
-        //$this->set('_serialize', ['item']);
-        $this->layout = 'ajax';		
-    }	
-	
-	
     public function add() {
         // In a controller or table method.
         $query = $this->Items->find('all', [
