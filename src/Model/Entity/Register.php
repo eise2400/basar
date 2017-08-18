@@ -23,5 +23,5 @@ class Register extends Entity
         'syncEn' => true,
         'comment' => true,
         'sync' => true,
-    ];
+    ];   
 }

@@ -412,7 +412,8 @@ class ItemsController extends AppController
         if ($eineZiffer) {
             $check = ( self::crossfoot($weightedTotal) % 10 );
         } else {
-            $check = sprintf("%'.02d", self::crossfoot($weightedTotal));           
+            // $check = sprintf("%'.02d", self::crossfoot($weightedTotal));   
+            $check = $weightedTotal % 100;
         }
 
         return $check;        
