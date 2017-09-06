@@ -28,7 +28,6 @@
                 <?= $this->Html->link(__('Anzeigen'), ['action' => 'view', $user->id], ['class' => 'button micro radius']) ?>
                 <?= $this->Html->link(__('Ändern'), ['action' => 'edit', $user->id], ['class' => 'button micro radius']) ?>
                 <?= $this->Html->link(__('Zettel'), ['action' => 'drucken', $user->id], ['class' => 'button micro radius']) ?>
-                <?= $this->Html->link(__('Touch'), ['controller' => 'Items', 'action' => 'touchItems', $user->id], ['class' => 'button micro radius']) ?>
                 <?php if (strtoupper($user->nummer) != 'ADMIN') echo $this->Form->postLink(__('Löschen'), 
                         ['action' => 'delete', $user->id],  
                         ['confirm' => __('Wollen Sie die Liste {0} wirklich löschen?', $user->nummer), 'class' => 'button micro alert radius']) ?>
