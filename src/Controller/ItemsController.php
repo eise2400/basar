@@ -254,6 +254,51 @@ class ItemsController extends AppController
         $this->set('_serialize', ['item']);
     }
 
+
+    public function touchAllItems($anz = 100) {
+        $this->paginate = ['limit' => $anz, 'conditions' => [ 'CHAR_LENGTH(Items.barcode)' => 10 ]];
+        $items = $this->paginate($this->Items);
+        $this->loadModel('Users');
+        $this->Users->recursive = 0;
+        
+        $count = 0;
+        foreach ($items as $item) {
+            $alterCode = $item->barcode;
+            $benutzer = $this->Users->get($item->user_id);
+            $item->barcode = $this->barcodeerzeugen($benutzer, $item);
+            if ($this->Items->save($item)) {
+                $count++;
+            } else {
+                $this->Flash->error(__('Fehler beim Touch.'));
+                return $this->redirect(['controller' => 'Users', 'action' => 'view/'.$item->user_id]);
+            }            
+        }
+        $this->Flash->success(__('Touch erfolgreich. '.$count.' Artikel gesichert'));
+        return $this->redirect(['controller' => 'Users', 'action' => 'index']);
+    }    
+    
+    
+    public function touchItems($id = null) {
+        $this->paginate = ['limit' => 100, 'conditions' => [ 'Items.user_id' => $id ] ];
+        $items = $this->paginate($this->Items);
+        $this->loadModel('Users');
+        $this->Users->recursive = 0;
+        $benutzer = $this->Users->get($id);            
+        $count = 0;
+        foreach ($items as $item) {
+            $item->barcode = $this->barcodeerzeugen($benutzer, $item);
+            if ($this->Items->save($item)) {
+                $count++;
+            } else {
+                $this->Flash->error(__('Fehler beim Touch.'));
+                return $this->redirect(['controller' => 'Users', 'action' => 'view/'.$item->user_id]);
+            }            
+        }
+        $this->Flash->success(__('Touch erfolgreich. '.$count.' Artikel gesichert'));
+        return $this->redirect(['controller' => 'Users', 'action' => 'view/'.$id]);
+    }    
+    
+    
     public function edit($id = null) {
         // Admin darf jeden Artikel ändern, der angemeldete Benutzer nur seine eigenen
         if ($this->Auth->user('gruppe') == 'A') {
@@ -434,23 +479,24 @@ class ItemsController extends AppController
     
     // Barcode zusammensetzen aus Benutzer, Preisprüfziffer, ItemNr, Jahr, Prüfziffer
     public function barcodeerzeugen($benutzer, $item) {
+        $jahr = AppController::getSetting('Jahr'); 
+        
+        // Barcode setzt sich zusammen aus dreistelliger Listennummer und Betragsprüfziffer
+        $code =  sprintf("%'.03d", $benutzer['nummer']);
+        $code .= substr($jahr, strlen($jahr) - 2, 1);//        
+        
+        // sowie der Nr des Artikels und der letzten Stelle des Jahr
+        $code .= sprintf("%'.02d", $item['nummer']);
+        $code .= substr($jahr, strlen($jahr) - 1, 1);
+
 //        // Barcode setzt sich zusammen aus dreistelliger Listennummer und Betragsprüfziffer
 //        $code =  sprintf("%'.03d", $benutzer['nummer']);
-//        $code .= self::betragcheck($item['preis']);
+//        $code .= self::betragcheck($item['preis'], false);
 //        
 //        // sowie der Nr des Artikels und der letzten Stelle des Jahr
 //        $code .= sprintf("%'.02d", $item['nummer']);
 //        $jahr = AppController::getSetting('Jahr'); 
-//        $code .= substr($jahr, strlen($jahr) - 1, 1);
-
-        // Barcode setzt sich zusammen aus dreistelliger Listennummer und Betragsprüfziffer
-        $code =  sprintf("%'.03d", $benutzer['nummer']);
-        $code .= self::betragcheck($item['preis'], false);
-        
-        // sowie der Nr des Artikels und der letzten Stelle des Jahr
-        $code .= sprintf("%'.02d", $item['nummer']);
-        $jahr = AppController::getSetting('Jahr'); 
-        $code .= substr($jahr, strlen($jahr) - 2, 2);
+//        $code .= substr($jahr, strlen($jahr) - 2, 2);
 
         // ergänzt um die Prüfziffer
         return self::ean8check($code);
