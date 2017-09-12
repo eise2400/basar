@@ -53,7 +53,23 @@ class ItemsController extends AppController
         $this->set('admin', $isadmin);         
         $this->set('_serialize', ['user', 'items']);
     }
-
+    
+    private static function stringsplit($string, $width = 30, $break="<br />", $cut = true) {
+        if($cut) {
+          // Match anything 1 to $width chars long followed by whitespace or EOS,
+          // otherwise match anything $width chars long
+          $search = '/(.{1,'.$width.'})(?:\s|$)|(.{'.$width.'})/uS';
+          $replace = '$1$2'.$break;
+        } else {
+          // Anchor the beginning of the pattern with a lookahead
+          // to avoid crazy backtracking when words are longer than $width
+          $pattern = '/(?=\s)(.{1,'.$width.'})(?:\s|$)/uS';
+          $replace = '$1'.$break;
+        }
+        return preg_replace($search, $replace, $string);
+    }
+    
+    
     // Barcodeliste drucken
     function drucken($id = null) {
 
@@ -116,8 +132,9 @@ class ItemsController extends AppController
             $text .= '<div class="preis" style="top:'.($oben + 1.6).'cm; left:'.($links + 4.2).'cm;">'.number_format($daten['preis'], 2, ',', '.').'&euro;</div>'."\n";
             if (strlen($daten['bezeichnung']) > 20) {
                 //$daten['bezeichnung'] = substr($daten['bezeichnung'], 0, 25).'<br/>'.substr($daten['bezeichnung'], 25, 25);
+                // Pulli mit pinken und wei\u00dfen Streifen  
                 $text .= '<div class="text" style="top:'.($oben + 2.3).'cm; left:'.($links + 1.6).'cm; font-size: 8pt;">'.
-                        substr($daten['bezeichnung'], 0, 25).'<br/>'.substr($daten['bezeichnung'], 25, 25).'&nbsp;</div>'."\n";
+                        ItemsController::stringsplit($daten['bezeichnung']).'&nbsp;</div>'."\n";
             } else {
                 $text .= '<div class="text" style="top:'.($oben + 2.5).'cm; left:'.($links + 1.6).'cm;">'.$daten['bezeichnung'].'&nbsp;</div>'."\n";
             }
