@@ -4,6 +4,8 @@ namespace App\Controller;
 use App\Controller\AppController;
 use Cake\Network\Email\Email;
 use Cake\I18n\Time;
+use Cake\Core\Configure;
+use Dompdf\Dompdf;
 
 /**
  * Users Controller
@@ -611,11 +613,11 @@ class UsersController extends AppController
     // Zettel zum Auslegen drucken
     public function drucken($id = null) {
 
-        //Configure::write('debug', 2);
+        Configure::write('debug', 2);
         error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
 
         $old_limit = ini_set('memory_limit', '128M');
-        require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');        
+        //require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');        
 
         if ($this->request->is('post')) {
             $text = AppController::getSetting('Listenformatierung');            
@@ -640,7 +642,7 @@ class UsersController extends AppController
             $text .= $this->_parseEMail(AppController::getSetting('Listentext'));    
         }
         
-        $dompdf = new \DOMPDF();
+        $dompdf = new Dompdf();
         $dompdf->load_html($text);
         $dompdf->render();
         $dompdf->stream("Druckliste.pdf", array("Attachment" => false));

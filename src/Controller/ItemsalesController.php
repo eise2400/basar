@@ -3,6 +3,7 @@ namespace App\Controller;
 
 use App\Controller\AppController;
 use Cake\Log\Log;
+use Dompdf\Dompdf;
 
 /**
  * Itemsales Controller
@@ -50,7 +51,7 @@ class ItemsalesController extends AppController
         error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
 
         $old_limit = ini_set('memory_limit', '128M');
-        require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');
+        //require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');
 
         // Benutzer holen für Listennummer
         $this->loadModel('Users');
@@ -239,7 +240,7 @@ class ItemsalesController extends AppController
         $text = $this->_parseBrief($text); 
         Log::write('debug', print_r($text, true));
         
-        $dompdf = new \DOMPDF();
+        $dompdf = new Dompdf();
         $dompdf->load_html($text);
         $dompdf->render();
         $dompdf->stream("Druckliste.pdf", array("Attachment" => false));
