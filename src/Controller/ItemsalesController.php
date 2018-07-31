@@ -48,7 +48,7 @@ class ItemsalesController extends AppController
     public function abrechnung_drucken($id = null) {
 
         //Configure::write('debug', 2);
-        error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
+        error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
         $old_limit = ini_set('memory_limit', '128M');
         //require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');
@@ -238,7 +238,7 @@ class ItemsalesController extends AppController
         
         
         $text = $this->_parseBrief($text); 
-        Log::write('debug', print_r($text, true));
+        //Log::write('debug', print_r($text, true));
         
         $dompdf = new Dompdf();
         $dompdf->load_html($text);

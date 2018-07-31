@@ -74,7 +74,7 @@ class ItemsController extends AppController
     function drucken($id = null) {
 
         //Configure::write('debug', 2);
-        error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
+        error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 
         $old_limit = ini_set('memory_limit', '128M');
         //require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');
@@ -114,8 +114,8 @@ class ItemsController extends AppController
 
             $code = $daten['barcode'];
             $text .= '<div class="hier" style="top:'.($oben - 0.2).'cm; left:'.$links.'cm; ">&nbsp;<br />&nbsp;<br />&nbsp;<br />&nbsp;<br />&nbsp;<br />Hier<br />lochen und<br />befestigen</div>';
-            $text .= '<div class="barcode" style="top:'.($oben - 0.1).'cm; left:'.($links + 1.85).'cm;">'.self::ean8($code, true).'&nbsp;</div>';
-            $text .= '<div class="hier" style="top:'.($oben - 0.2).'cm; left:'.($links + 6.8).'cm; margin-top: 60px;">&nbsp;<br />&nbsp;<br />&nbsp;<br />&nbsp;<br />&nbsp;<br />Hier<br />lochen und<br />befestigen</div>';
+            $text .= '<div class="barcode" style="top:'.($oben - 0.6).'cm; left:'.($links + 1.85).'cm;">'.self::ean8($code, true).'&nbsp;</div>';
+            $text .= '<div class="hier" style="top:'.($oben - 1.8).'cm; left:'.($links + 6.8).'cm; margin-top: 60px;">&nbsp;<br />&nbsp;<br />&nbsp;<br />&nbsp;<br />&nbsp;<br />Hier<br />lochen und<br />befestigen</div>';
             if ($daten['groesse'] != "") {
                 $groesse = "Gr.".$daten['groesse'];
             }
@@ -133,7 +133,7 @@ class ItemsController extends AppController
             if (strlen($daten['bezeichnung']) > 20) {
                 //$daten['bezeichnung'] = substr($daten['bezeichnung'], 0, 25).'<br/>'.substr($daten['bezeichnung'], 25, 25);
                 // Pulli mit pinken und wei\u00dfen Streifen  
-                $text .= '<div class="text" style="top:'.($oben + 2.3).'cm; left:'.($links + 1.6).'cm; font-size: 8pt;">'.
+                $text .= '<div class="text" style="top:'.($oben + 2.35).'cm; left:'.($links + 1.6).'cm; font-size: 8pt;">'.
                         ItemsController::stringsplit($daten['bezeichnung']).'&nbsp;</div>'."\n";
             } else {
                 $text .= '<div class="text" style="top:'.($oben + 2.5).'cm; left:'.($links + 1.6).'cm;">'.$daten['bezeichnung'].'&nbsp;</div>'."\n";

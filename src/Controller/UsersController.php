@@ -2,7 +2,7 @@
 namespace App\Controller;
 
 use App\Controller\AppController;
-use Cake\Network\Email\Email;
+use Cake\Mailer\Email;
 use Cake\I18n\Time;
 use Cake\Core\Configure;
 use Dompdf\Dompdf;
