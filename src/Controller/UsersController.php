@@ -614,8 +614,8 @@ class UsersController extends AppController
     // Zettel zum Auslegen drucken
     public function drucken($id = null) {
 
-        Configure::write('debug', 2);
-        error_reporting(E_ALL & ~E_STRICT & ~E_DEPRECATED);
+        //Configure::write('debug', 2);
+        error_reporting(E_ERROR | E_WARNING | E_PARSE);
 
         $old_limit = ini_set('memory_limit', '128M');
         //require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');        
@@ -644,6 +644,7 @@ class UsersController extends AppController
         }
         
         $dompdf = new Dompdf();
+        ob_get_clean();
         $dompdf->load_html($text);
         $dompdf->render();
         $dompdf->stream("Druckliste.pdf", array("Attachment" => false));
