@@ -6,6 +6,7 @@ use Cake\Mailer\Email;
 use Cake\I18n\Time;
 use Cake\Core\Configure;
 use Dompdf\Dompdf;
+use Cake\Log\Log;
 
 /**
  * Users Controller
@@ -179,7 +180,7 @@ class UsersController extends AppController
     
     
     // E-Mail senden
-    private function sendeEmail($empfaenger, $text, $betreff) {
+    private function sendeEmail($empfaenger, $text, $betreff) {        
         $email = new Email();
         $email->transport('default');
         $email->template('default', 'default')->emailFormat('html');
@@ -187,7 +188,7 @@ class UsersController extends AppController
         $email->subject($betreff);
         $email->viewVars(['content' => $text]);
         $email->from('info@basar-teugn.de', 'Basar Teugn');
-        $email->send();        
+        $email->send();         
     }
     
     

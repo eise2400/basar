@@ -187,12 +187,12 @@ class ItemsController extends AppController
 
         $text = $this->_parseBrief($text); 
          
-        
-        
         $dompdf = new Dompdf();
+        ob_get_clean();
         $dompdf->load_html($text);
         $dompdf->render();
         $dompdf->stream("Druckliste.pdf", array("Attachment" => false));
+        //$this->set('ausgabe', $dompdf->output());
     }
     
     
