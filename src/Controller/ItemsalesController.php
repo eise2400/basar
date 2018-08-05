@@ -236,14 +236,21 @@ class ItemsalesController extends AppController
             }
         }    
         
-        
         $text = $this->_parseBrief($text); 
         //Log::write('debug', print_r($text, true));
         
         $dompdf = new Dompdf();
-        ob_get_clean();
         $dompdf->load_html($text);
         $dompdf->render();
-        $dompdf->stream("Druckliste.pdf", array("Attachment" => false));
+        $pdf = $dompdf->output();
+
+        $this->response = $this->response->withDisabledCache();
+        $response = $this->response;
+        $response->body($pdf);
+        $response = $response->withType('pdf');
+        $response = $response->withDownload('Druckliste.pdf');
+
+        // Return response object to prevent controller from trying to render a view.
+        return $response;            
     }    
 }

@@ -186,12 +186,20 @@ class ItemsController extends AppController
         if ($nummer > 0) $text .= '</tbody></table></div>'."\n";        
 
         $text = $this->_parseBrief($text); 
-         
+        
         $dompdf = new Dompdf();
-        ob_get_clean();
         $dompdf->load_html($text);
         $dompdf->render();
-        $dompdf->stream("Druckliste.pdf", array("Attachment" => false));
+        $pdf = $dompdf->output();
+
+        $this->response = $this->response->withDisabledCache();
+        $response = $this->response;
+        $response->body($pdf);
+        $response = $response->withType('pdf');
+        $response = $response->withDownload('Druckliste.pdf');
+
+        // Return response object to prevent controller from trying to render a view.
+        return $response;	              
     }
     
     
