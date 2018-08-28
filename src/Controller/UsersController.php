@@ -74,6 +74,9 @@ class UsersController extends AppController
      */
     public function index()
     {
+	$this->paginate = [
+            'contain' => ['Items']
+    	];        
         $this->set('users', $this->paginate($this->Users));
         $this->set('_serialize', ['users']);
     }

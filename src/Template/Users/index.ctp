@@ -13,7 +13,7 @@
             <th><?= $this->Paginator->sort('nummer') ?></th>
             <th><?= $this->Paginator->sort('name') ?></th>
             <th><?= $this->Paginator->sort('email', 'E-Mail') ?></th>
-            <th><?= $this->Paginator->sort('emailok', 'E-Mail OK?') ?></th>
+            <th>Teile</th>
             <th class="actions" ><?= __('Aktionen') ?></th>
         </tr>
     </thead>
@@ -23,14 +23,14 @@
             <td><?php echo $this->Form->checkbox('user_id.'.$user->id); echo(($user->nummer)? ($user->nummer) : '<i>kein</i>'); ?></td>
             <td><?= ($user->name)? ($user->vorname.' '.$user->name) : '<i>kein</i>' ?></td>
             <td><?= h($user->email) ?></td>
-            <td><?= h($user->emailok ? 'Ja':'') ?></td>
+            <td><?= count($user->items) ?></td>
             <td class="actions">
                 <?= $this->Html->link(__('Anzeigen'), ['action' => 'view', $user->id], ['class' => 'button micro radius']) ?>
                 <?= $this->Html->link(__('Ändern'), ['action' => 'edit', $user->id], ['class' => 'button micro radius']) ?>
                 <?= $this->Html->link(__('Zettel'), ['action' => 'drucken', $user->id], ['class' => 'button micro radius']) ?>
                 <?php if (strtoupper($user->nummer) != 'ADMIN') echo $this->Form->postLink(__('Löschen'), 
                         ['action' => 'delete', $user->id],  
-                        ['confirm' => __('Wollen Sie die Liste {0} wirklich löschen?', $user->nummer), 'class' => 'button micro alert radius']) ?>
+                        ['confirm' => __('Wollen Sie die Liste {0} bzw. ID {1} wirklich löschen?', $user->nummer, $user->id), 'class' => 'button micro alert radius']) ?>
             </td>
         </tr>
 

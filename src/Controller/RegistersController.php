@@ -70,6 +70,7 @@ class RegistersController extends AppController
     
     // Wie viele Minuten ist $date schon her?
     private function minutenHer($date) {
+        if (is_null($date)) return strtotime('now') / 60; 
         $spanne = (strtotime('now') - strtotime($date->i18nFormat('yyyy-MM-dd HH:mm:ss'))) / 60;
         return $spanne;
     }  
@@ -110,7 +111,7 @@ class RegistersController extends AppController
                 }
                 else {
                     $wert = addslashes($wert);
-                    $wert = ereg_replace("\n","\\n", $wert);
+                    $wert = preg_replace('/\n/','/\\n/', $wert);
                 }
                 
                 // Alle Felder werden mit Anführungszeichen übertragen. SQL interpretiert den Inhalt bei Zahlwerten trotzdem richtig.
