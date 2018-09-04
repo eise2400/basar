@@ -313,6 +313,9 @@ class RegistersController extends AppController
         if (!array_key_exists('table', $this->eingabe)) return $this->messageEnd('table fehlt', true); 
         if (!in_array($this->eingabe['table'], $ERLAUBT)) return $this->messageEnd('Tabelle nicht erlaubt', true);
         if (!array_key_exists('maxid', $this->eingabe)) return $this->messageEnd('maxid fehlt', true);
+        if (array_key_exists('utf8', $this->eingabe)) $utf8encode = true;
+        else $utf8encode = false;
+        
         if ($this->eingabe['maxid'] <= 0) {
             $bedingung = null;
         }
@@ -323,7 +326,7 @@ class RegistersController extends AppController
         else $maxanzahl = 10;        
         
         // tabelleLesen($tabelle, $modified = 0, $ausschluss = [], $id = null, $utf8encode = true, $sql = true, $maxentries = 0)            
-        ${$this->eingabe['table']} = $this->tabelleLesen($this->eingabe['table'], 0, ['code'], $bedingung, true, false, $maxanzahl);
+        ${$this->eingabe['table']} = $this->tabelleLesen($this->eingabe['table'], 0, ['code'], $bedingung, $utf8encode, false, $maxanzahl);
         $this->set(compact('sqlsync', 'settings', 'registers', 'users', 'items', 'lastscan'));
     }
   
@@ -576,6 +579,50 @@ class RegistersController extends AppController
     
     
     /**
+     * addRegisterUser method
+     *
+     * @return int ID des neuen Kassenbenutzers.
+     */
+    public function addRegisterUser()
+    {     
+        $this->loadModel('Users');
+        $user = $this->Users->newEntity();                
+        $user->nummer = $this->naechsteKasse();
+        $user->code = rand(10000000, 99999999);   
+        $user->gruppe = 'K';
+
+        if ($this->Users->save($user)) {
+            $nummer = $user->id;
+        } else {
+            $nummer = 0;
+        }
+        return $nummer;
+    }      
+    
+    
+
+    // Höchste Kassennummer ermitteln und die nächste Kassennummer zurück geben.
+    private function naechsteKasse() {
+        $maxlist = $this->Users->find('all', array( 
+              'fields' => array('nummer'),
+              'conditions' => array("gruppe = 'K'"),
+              'order' => array('nummer DESC'),
+              'limit' => 1
+        ));
+        $max = $maxlist->first();
+        if (is_null($max)) $maxnummer = 'K1'; // Die erste Kasse heisst K1
+        else {
+            // ab dann wird durchnummeriert.
+            // K weg und in Zahl umwandeln
+            $maxnummer = (int)substr($max['nummer'], 1);
+            // Dann erhöhen und 'K' wieder dran
+            $maxnummer = 'K'.($maxnummer + 1);
+        }
+        return $maxnummer;   
+    }        
+    
+    
+    /**
      * Add method
      *
      * @return void Redirects on successful add, renders view otherwise.
@@ -585,7 +632,7 @@ class RegistersController extends AppController
         if ($this->request->is('post')) {
 
             // Erst den zugehörigen Benutzer anlegen
-            $userid = UsersController::addRegisterUser();
+            $userid = $this->addRegisterUser();
             
             // Dann Eintrag für Kasse vorbereiten
             $register = $this->Registers->patchEntity($register, $this->request->data);

@@ -47,7 +47,7 @@ class ItemsController extends AppController
 		$voll = true;
             }
         }
-        $this->set('aendernMoeglich', AppController::getSetting('Ändern möglich'));
+        $this->set('aendernMoeglich', $this->aendernMoeglich());
         $this->set('erweiterbar', $erweiterbar); 
         $this->set('voll', $voll);   
         $this->set('admin', $isadmin);         
@@ -325,6 +325,40 @@ class ItemsController extends AppController
     }    
     
     
+    private function aendernMoeglich() {
+        /*$this->loadModel('Users');
+        $this->Users->recursive = 0;
+        $user = $this->Users->get($this->Auth->user('id'));
+        
+        $this->loadModel('Sync');
+        $this->loadModel('Sales');
+        $offen = $this->Sync->find('all', array( 
+              'conditions' => array('gebucht = 0'),
+              'order' => array('created'),
+        ))->toArray();
+        foreach ($offen as $scan) {
+            try {
+                $sale = $this->Sales->get($scan->item_id);
+            } catch (\Exception $e) {
+                $sale = $this->Sales->newEntity();
+                $sale->id = $scan->item_id;
+            }
+            if ($scan->art == 1) $sale->verkauft = 1;
+            else $sale->verkauft = 0;
+            if ($this->Sales->save($sale)) {
+                $scan->gebucht = 1;
+                $this->Sync->save($scan);
+            }
+            else return false;
+            // In Sales eintragen
+        }
+        return true;*/        
+        
+        
+        
+        return AppController::getSetting('Ändern möglich');
+    }
+    
     public function edit($id = null) {
         // Admin darf jeden Artikel ändern, der angemeldete Benutzer nur seine eigenen
         if ($this->Auth->user('gruppe') == 'A') {
@@ -332,7 +366,7 @@ class ItemsController extends AppController
             $item = $this->Items->get($id);
         } else {
             $admin = false;
-            if (AppController::getSetting('Ändern möglich')) {
+            if ($this->aendernMoeglich()) {
                 $item = $this->Items->get($id, [
                     'contain' => [],
                     'conditions' => [ 'Items.user_id' => $this->Auth->user('id') ]

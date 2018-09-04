@@ -285,48 +285,7 @@ class UsersController extends AppController
             return false;
         }    
     }
- 
     
-    // Höchste Kassennummer ermitteln und die nächste Kassennummer zurück geben.
-    private function naechsteKasse() {
-        $maxlist = $this->Users->find('all', array( 
-              'fields' => array('nummer'),
-              'conditions' => array("gruppe = 'K'"),
-              'order' => array('nummer DESC'),
-              'limit' => 1
-        ));
-        $max = $maxlist->first();
-        if (is_null($max)) $maxnummer = 'K1'; // Die erste Kasse heisst K1
-        else {
-            // ab dann wird durchnummeriert.
-            // K weg und in Zahl umwandeln
-            $maxnummer = (int)substr($max['nummer'], 1);
-            // Dann erhöhen und 'K' wieder dran
-            $maxnummer = 'K'.($maxnummer + 1);
-        }
-        return $maxnummer;   
-    }    
-    
-    /**
-     * addRegisterUser method
-     *
-     * @return int ID des neuen Kassenbenutzers.
-     */
-    public function addRegisterUser()
-    {     
-        $this->loadModel('Users');
-        $user = $this->Users->newEntity();                
-        $user->nummer = UsersController::naechsteKasse();
-        $user->code = rand(10000000, 99999999);   
-        $user->gruppe = 'K';
-
-        if ($this->Users->save($user)) {
-            $nummer = $user->id;
-        } else {
-            $nummer = 0;
-        }
-        return $nummer;
-    }     
 
     
     /**
