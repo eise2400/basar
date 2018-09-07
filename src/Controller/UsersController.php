@@ -115,12 +115,16 @@ class UsersController extends AppController
     public function view($id = null)
     {
         $user = $this->Users->get($id, [
-            'contain' => ['Items'],
-            'conditions' => [ 'Items.alt' => false ]
+            'contain' => ['Items']
             ]);
+        $this->loadModel('Items');
+        $uitems = $this->Items->find('all', [
+            'conditions' => array( 'Items.alt' => false, 'Items.user_id' => $user->id)
+         ]);
         
         $this->set('user', $user);
-        $this->set('_serialize', ['user']);
+        $this->set('uitems', $uitems);
+        $this->set('_serialize', ['user', 'uitems']);
     }
 
     

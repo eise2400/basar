@@ -32,9 +32,8 @@ class ItemsTable extends Table
                             'foreignKey' => 'user_id',
                             'joinType' => 'INNER'
                             ]);
-            $this->addBehavior('Josegonzalez/Version.Version');
-//            $this->addBehavior('Josegonzalez/Version.Version', 
-//                    ['fields' => ['barcode', 'bezeichnung', 'preis', 'groesse']]);
+            $this->addBehavior('Josegonzalez/Version.Version', 
+                    ['fields' => ['bezeichnung', 'preis', 'groesse', 'modified', 'gedruckt', 'alt']]);
 	}
 
 	/**

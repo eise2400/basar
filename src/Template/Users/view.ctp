@@ -8,7 +8,7 @@
     <h2><?= h($user->nummer.': '.($user->name=='' ? 'kein Name' : $user->name)) ?></h2>
     <div class="related row">
         <div class="column large-12">
-        <?php if (!empty($user->items)) { ?>
+        <?php if (!empty($uitems)) { ?>
         <table cellpadding="0" cellspacing="0">
             <tr>
                 <th>Barcode</th>
@@ -17,7 +17,7 @@
                 <th><?= __('Preis') ?></th>
                 <th class="actions"><?= __('Actions') ?></th>
             </tr>
-            <?php foreach ($user->items as $items): ?>
+            <?php foreach ($uitems as $items): ?>
             <tr>
                 <td><?= h($items->barcode) ?></td>
                 <td><?= h($items->bezeichnung) ?></td>
