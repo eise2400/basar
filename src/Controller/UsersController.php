@@ -75,7 +75,8 @@ class UsersController extends AppController
     public function index()
     {
 	$this->paginate = [
-            'contain' => ['Items']
+            'contain' => ['Items'],
+            'conditions' => [ 'Items.alt' => false ]
     	];        
         $this->set('users', $this->paginate($this->Users));
         $this->set('_serialize', ['users']);
@@ -115,7 +116,8 @@ class UsersController extends AppController
     public function view($id = null)
     {
         $user = $this->Users->get($id, [
-            'contain' => ['Items']
+            'contain' => ['Items'],
+            'conditions' => [ 'Items.alt' => false ]
             ]);
         
         $this->set('user', $user);
@@ -428,7 +430,7 @@ class UsersController extends AppController
         
         $this->loadModel('Items');
         $items = $this->Items->find('all', [
-            'conditions' => [ 'Items.user_id' => $this->Auth->user('id') ]
+            'conditions' => [ 'Items.user_id' => $this->Auth->user('id'), 'Items.alt' => false ]
         ]);
         
         $erweiterbar = false;

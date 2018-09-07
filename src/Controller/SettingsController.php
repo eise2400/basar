@@ -108,7 +108,7 @@ class SettingsController extends AppController
         
         // Anzahl Benutzer mit Teilen
         $mitteilen = $connection->execute('SELECT count(UID) AS `Anzahl Benutzer mit min. einem Teil`, sum(anzahl) AS `Anzahl eingetragener Teile` FROM ('.
-                'SELECT users.id AS UID, count(items.id) AS anzahl FROM `users` left join `items` on users.id = items.user_id '.
+                'SELECT users.id AS UID, count(items.id) AS anzahl FROM `users` left join `items` on users.id = items.user_id where items.alt = 0 '.
                 'group by users.id having anzahl > 0) as s')->fetchAll('assoc');
         $daten[] = $mitteilen[0];
         
@@ -128,7 +128,7 @@ class SettingsController extends AppController
 
         // Listengebühren
         $teile4 = $connection->execute('select concat(replace(cast(sum(ceil(teile/30)*2) * 1.00 as char), \'.\', \',\'),\'€\') AS `Listengebühren` from (Select users.id AS benutzer, '.
-                'count(items.id) AS teile from items left join users on items.user_id = users.id where ist_da = true '.
+                'count(items.id) AS teile from items left join users on items.user_id = users.id where ist_da = true and items.alt = 0 '.
                 'group by users.id) AS sub')->fetchAll('assoc');        
         $daten[] = $teile4[0];
         
