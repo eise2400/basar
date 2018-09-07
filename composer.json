@@ -11,7 +11,8 @@
         "cakephp/migrations": "~1.0",
         "cakephp/plugin-installer": "*",
         "captcha-com/cakephp-captcha": "4.*",
-        "dompdf/dompdf": "*"
+        "dompdf/dompdf": "*",
+        "josegonzalez/cakephp-version": "dev-master"
     },
     "require-dev": {
         "psy/psysh": "@stable",

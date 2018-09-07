@@ -160,44 +160,45 @@ ServerRequest::addDetector('tablet', function ($request) {
 	return $detector->isTablet();
 });
 
-	/**
-	 * Custom Inflector rules, can be set to correctly pluralize or singularize
-	 * table, model, controller names or whatever other string is passed to the
-	 * inflection functions.
-	 *
-	 * Inflector::rules('plural', ['/^(inflect)or$/i' => '\1ables']);
-	 * Inflector::rules('irregular', ['red' => 'redlings']);
-	 * Inflector::rules('uninflected', ['dontinflectme']);
-	 * Inflector::rules('transliteration', ['/å/' => 'aa']);
-	*/
+/**
+ * Custom Inflector rules, can be set to correctly pluralize or singularize
+ * table, model, controller names or whatever other string is passed to the
+ * inflection functions.
+ *
+ * Inflector::rules('plural', ['/^(inflect)or$/i' => '\1ables']);
+ * Inflector::rules('irregular', ['red' => 'redlings']);
+ * Inflector::rules('uninflected', ['dontinflectme']);
+ * Inflector::rules('transliteration', ['/å/' => 'aa']);
+*/
 
-	/**
-	 * Plugins need to be loaded manually, you can either load them one by one or all of them in a single call
-	 * Uncomment one of the lines below, as you need. make sure you read the documentation on Plugin to use more
-	 * advanced ways of loading plugins
-	 *
-	 * Plugin::loadAll(); // Loads all plugins at once
-	 * Plugin::load('Migrations'); //Loads a single plugin named Migrations
-	 *
-	*/
+/**
+ * Plugins need to be loaded manually, you can either load them one by one or all of them in a single call
+ * Uncomment one of the lines below, as you need. make sure you read the documentation on Plugin to use more
+ * advanced ways of loading plugins
+ *
+ * Plugin::loadAll(); // Loads all plugins at once
+ * Plugin::load('Migrations'); //Loads a single plugin named Migrations
+ *
+*/
 
-	Plugin::load('Migrations');
+Plugin::load('Migrations');
 
-	// Only try to load DebugKit in development mode
-	// Debug Kit should not be installed on a production system
-	if (Configure::read('debug')) {
-		Plugin::load('DebugKit', ['bootstrap' => true]);
-	}
+// Only try to load DebugKit in development mode
+// Debug Kit should not be installed on a production system
+if (Configure::read('debug')) {
+        Plugin::load('DebugKit', ['bootstrap' => true]);
+}
 
-	/**
-	 * Connect middleware/dispatcher filters.
-	 */
-	DispatcherFactory::add('Asset');
-	DispatcherFactory::add('Routing');
-	DispatcherFactory::add('ControllerFactory');
+/**
+ * Connect middleware/dispatcher filters.
+ */
+DispatcherFactory::add('Asset');
+DispatcherFactory::add('Routing');
+DispatcherFactory::add('ControllerFactory');
 
-	/**
-	 * Enable default locale format parsing.
-	 * This is needed for matching the auto-localized string output of Time() class when parsing dates.
-	*/
-	Type::build('datetime')->useLocaleParser();
+/**
+ * Enable default locale format parsing.
+ * This is needed for matching the auto-localized string output of Time() class when parsing dates.
+*/
+Type::build('datetime')->useLocaleParser();
+Plugin::load('Josegonzalez/Version', ['bootstrap' => true]);

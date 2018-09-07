@@ -15,6 +15,7 @@ class RegistersController extends AppController
     private $connection;
     private $kasse;
     private $eingabe;
+    private $message;
     
     public function initialize() {
         parent::initialize();
@@ -35,6 +36,7 @@ class RegistersController extends AppController
 
     // Message rausschreiben und beenden. Fehlerende für Ajax
     private function messageEnd($message, $doThrow = false) {
+        $this->message .= $message;
         $this->set(compact('message'));
         $this->viewBuilder()->setLayout('ajax');  
         if ($doThrow) throw new \Exception($message);
@@ -110,7 +112,7 @@ class RegistersController extends AppController
                     $wert = '';
                 }
                 else {
-                    $wert = addslashes($wert);
+                    //$wert = addslashes($wert);
                     $wert = preg_replace('/\n/','/\\n/', $wert);
                 }
                 
@@ -334,7 +336,7 @@ class RegistersController extends AppController
     // Was ist der aktuellst Eintrag einer Tabelle?    
     // lastmodified - table[array/string]? => array(table: modified)     
     private function lastModified() {
-        $ERLAUBT = ['settings','users','items'];    
+        $ERLAUBT = ['settings','users','items','sync'];    
         $lastscan = 0; // Das ist der letzte bekannte Scan dieser Kasse        
         
         if (!array_key_exists('table', $this->eingabe)) return $this->messageEnd('Table fehlt', true);
@@ -346,7 +348,9 @@ class RegistersController extends AppController
 
         foreach ($this->eingabe['table'] as $tabelle) {
             if (!in_array($tabelle, $ERLAUBT)) return $this->messageEnd('Tabelle nicht erlaubt', true);
-            $statement = $this->connection->execute('SELECT MAX(modified) AS maxval FROM '.$tabelle)->fetchAll('assoc');
+            if ($tabelle == 'sync') $bedingung = ' WHERE register_id = '.$this->eingabe['registerid'];
+            else $bedingung = '';
+            $statement = $this->connection->execute('SELECT MAX(modified) AS maxval FROM '.$tabelle.$bedingung)->fetchAll('assoc');
             if (!is_null($statement[0]["maxval"])) $lastscan = $statement[0]["maxval"];
             else $lastscan = 0;
             $modified[$tabelle] = $lastscan;
@@ -370,6 +374,7 @@ class RegistersController extends AppController
         $statement = $this->connection->execute('SELECT COUNT(*) AS anz FROM sync WHERE register_id = '.$this->eingabe['registerid'])->fetchAll('assoc');
         if (!\is_null($statement[0]["anz"])) $scansindb = $statement[0]["anz"];
         else $scansindb = 0;
+        $this->messageEnd('ScansinDB ='.$scansindb); 
         if ($oldscans != $scansindb) {
            // Scans dieser Kasse ablöschen
            $statement = $this->connection->execute('DELETE FROM sync WHERE register_id = '.$this->eingabe['registerid']);
@@ -385,18 +390,21 @@ class RegistersController extends AppController
            $i = 0; // Zähler wie viele Zeilen in ein Statement gepackt werden 
 
            // Spaltennamen merken
-           $spalten = '';
+           /*$spalten = '';
            foreach ($scans[0] as $spalte => $wert) {
                $spalten .= '`'.$spalte.'`, ';
            }
            $spalten = substr($spalten, 0, strlen($spalten) - 2); // Komma wieder weg
+           */
+           $spalten = '`register_id`, `reg_item_id`, `barcode`, `art`, `created`';
+             
 
            for ($o = 0; $o < sizeof($scans); $o++)
            {
                $row = $scans[$o];
 
                // Jede Kasse darf nur eigene Einträge senden. Kann, muss aber nicht so sein.
-               if ($row->register_id != $this->kasse->id) return $this->messageEnd('Eintrag ungültiger Kasse!', true);
+               if ($row[0] != $this->kasse->id) return $this->messageEnd('Eintrag ungültiger Kasse!', true);
 
                if ($i == 0) {
                    $tmpstr = 'INSERT INTO sync ('.$spalten.') VALUES (';
@@ -406,7 +414,8 @@ class RegistersController extends AppController
                }
 
                foreach ($row as $spalte => $wert) {
-                   $wert = ereg_replace("\n","\\n", addslashes($wert));
+                   //$wert = ereg_replace("\n","\\n", addslashes($wert));
+                   $wert = preg_replace('/\n/','/\\n/', addslashes($wert));
                    if (isset($wert)) { $tmpstr .= '"'.$wert.'"' ; } else { $tmpstr .= '""'; }
                    $tmpstr .= ','; 
                }
@@ -424,7 +433,7 @@ class RegistersController extends AppController
                }
            } 
 
-           $this->syncBuchen();
+           //$this->syncBuchen();
            $message = 'Neue Scans übertragen.';
         }
         else {

@@ -24,10 +24,10 @@ class ItemsController extends AppController
 
         $this->set(compact('user'));
         if ($user['gruppe'] == 'A') {
-            $this->paginate = ['limit' => 100 ];
+            $this->paginate = ['limit' => 100, 'conditions' => [ 'Items.alt' => false ] ];
             $isadmin = true;
         }
-        else $this->paginate = ['limit' => 100, 'conditions' => [ 'Items.user_id' => $this->Auth->user('id') ] ];
+        else $this->paginate = ['limit' => 100, 'conditions' => [ 'Items.user_id' => $this->Auth->user('id'), 'Items.alt' => false ] ];
         $items = $this->paginate($this->Items);
         $this->set('items', $items);
 
@@ -53,6 +53,7 @@ class ItemsController extends AppController
         $this->set('admin', $isadmin);         
         $this->set('_serialize', ['user', 'items']);
     }
+      
     
     private static function stringsplit($string, $width = 30, $break="<br />", $cut = true) {
         if($cut) {
@@ -95,6 +96,7 @@ class ItemsController extends AppController
             'limit' => 100,		
             'conditions' => [
                 'Items.user_id' => $this->benutzer['id'],
+                'Items.alt' => false,
             ],
             'order' => [
                 'Items.nummer' => 'asc'
@@ -187,6 +189,11 @@ class ItemsController extends AppController
 
         $text = $this->_parseBrief($text); 
         
+        // Artikel als gedruckt markieren
+        //if ($this->Auth->user('gruppe') == 'V') {
+            $this->_gedrucktMarkieren($this->benutzer);
+        //}        
+        
         $dompdf = new Dompdf();
         $dompdf->load_html($text);
         $dompdf->render();
@@ -202,6 +209,21 @@ class ItemsController extends AppController
         return $response;	              
     }
     
+    private function _gedrucktMarkieren($user) {        
+        $this->paginate = ['limit' => 100, 'conditions' => [ 'Items.user_id' => $user['id'], 'Items.alt' => false ] ];
+        $items = $this->paginate($this->Items);            
+        $count = 0;
+        foreach ($items as $item) {
+            $item->gedruckt = true;
+            if ($this->Items->save($item)) {
+                $count++;
+            } else {
+                $this->Flash->error(__('Fehler beim als gedruckt kennzeichnen.'));
+                return $this->redirect(['controller' => 'Users', 'action' => 'view/'.$user]);
+            }            
+        }
+        return $count;        
+    }
     
     function _parseBrief($input) {
         $regex = '|@@(.+?)@@|';
@@ -210,20 +232,35 @@ class ItemsController extends AppController
         return preg_replace_callback($regex, array($this, '_ersetzungen'), $input);
     }
 
- 
-    public function view($id = null) {
-        $item = $this->Items->get($id, [
-                'contain' => ['Users']
-            ]);
-        $this->set('item', $item);
-        $this->set('_serialize', ['item']);
+    // Anzeigen mit Versionen
+    public function view($barcode = null) {
+        $query = $this->Items->find('all', [
+            'conditions' => ['Items.barcode' => $barcode],
+            'order' => ['Items.id']
+        ]);
+        
+        $items = [];
+        $userid = 0;
+        foreach ($query->toArray() as $artikel) {
+            $userid = $artikel->user_id;
+            $items = array_merge($items, $artikel->versions());
+            $items = array_merge($items, [$artikel]);            
+        }        
+        $this->set('items', $items); 
+        
+        $this->set('barcode', $barcode);
+        
+        $this->loadModel('Users');
+        $this->Users->recursive = 0;
+        $user = $this->Users->get($userid);        
+        $this->set('user', $user);
     }
 
 
     public function add() {
         // In a controller or table method.
         $query = $this->Items->find('all', [
-            'conditions' => ['Items.user_id =' => $this->Auth->user('id')]
+            'conditions' => ['Items.user_id =' => $this->Auth->user('id'), 'Items.alt' => false]
             ]);
         $number = $query->count();
         
@@ -253,7 +290,7 @@ class ItemsController extends AppController
 
             $lastmax = $this->Items->find('all', 
                 array('fields' => array('Items.nummer'), 
-                    'conditions' => array('Items.user_id =' => $this->Auth->user('id')),
+                    'conditions' => array('Items.user_id =' => $this->Auth->user('id'), 'Items.alt' => false),
                     'order' => array('Items.nummer')
                 )
             );
@@ -282,7 +319,7 @@ class ItemsController extends AppController
 
 
     public function touchAllItems($anz = 100) {
-        $this->paginate = ['limit' => $anz, 'conditions' => [ 'CHAR_LENGTH(Items.barcode)' => 10 ]];
+        $this->paginate = ['limit' => $anz, 'conditions' => [ 'CHAR_LENGTH(Items.barcode)' => 10, 'Items.alt' => false ]];
         $items = $this->paginate($this->Items);
         $this->loadModel('Users');
         $this->Users->recursive = 0;
@@ -305,7 +342,7 @@ class ItemsController extends AppController
     
     
     public function touchItems($id = null) {
-        $this->paginate = ['limit' => 100, 'conditions' => [ 'Items.user_id' => $id ] ];
+        $this->paginate = ['limit' => 100, 'conditions' => [ 'Items.user_id' => $id, 'Items.alt' => false ] ];
         $items = $this->paginate($this->Items);
         $this->loadModel('Users');
         $this->Users->recursive = 0;
@@ -363,13 +400,16 @@ class ItemsController extends AppController
         // Admin darf jeden Artikel ändern, der angemeldete Benutzer nur seine eigenen
         if ($this->Auth->user('gruppe') == 'A') {
             $admin = true;
-            $item = $this->Items->get($id);
+            $item = $this->Items->get($id, [
+                    'contain' => [],
+                    'conditions' => [ 'Items.alt' => false ]
+                ]);
         } else {
             $admin = false;
             if ($this->aendernMoeglich()) {
                 $item = $this->Items->get($id, [
                     'contain' => [],
-                    'conditions' => [ 'Items.user_id' => $this->Auth->user('id') ]
+                    'conditions' => [ 'Items.user_id' => $this->Auth->user('id'), 'Items.alt' => false ]
                 ]);
             } else {
                 $this->Flash->error(__('Keine Berechtigung!'));
@@ -392,7 +432,10 @@ class ItemsController extends AppController
             $this->loadModel('Users');
             $this->Users->recursive = 0;
             $benutzer = $this->Users->get($item->user_id);            
-            $item->barcode = $this->barcodeerzeugen($benutzer, $item);            
+            $item->barcode = $this->barcodeerzeugen($benutzer, $item);
+
+            // Vorm Speichern ist gedruckt immer zurück zu setzen
+            $item->gedruckt = false;
 
             if ($this->Items->save($item)) {
                 $this->Flash->success(__('Artikel gesichert'));
@@ -422,18 +465,20 @@ class ItemsController extends AppController
             $item = $this->Items->get($id);
         } else {
             $admin = false;
-            if (AppController::getSetting('Ändern möglich')) {
+            if ($this->aendernMoeglich()) {
                 $item = $this->Items->get($id, [
-                    'contain' => [],
-                    'conditions' => [ 'Items.user_id' => $this->Auth->user('id') ]
+                    'conditions' => [ 'Items.user_id' => $this->Auth->user('id'), 'Items.alt' => false ]
                 ]);
             } else {
                 $this->Flash->error(__('Keine Berechtigung!'));
                 return $this->redirect(['action' => 'index']);
             }
-        }        
+        }
         
-        if ($this->Items->delete($item)) {
+        // Statt löschen immer auf alt setzen
+        $item->alt = true;        
+        
+        if ($this->Items->save($item)) {
             $this->Flash->success(__('Artikel gelöscht'));
             if ($admin) {
                 return $this->redirect(['controller' => 'Users', 'action' => 'view/'.$item->user_id]);
@@ -454,6 +499,11 @@ class ItemsController extends AppController
 
         $action = $this->request->params['action'];
 
+        // Einige Transaktionen sind nur für den Admin erlaubt
+        if (in_array($action, ['barcodeerzeugen', 'indexOld', 'touchItems', 'touchAllItems'])) {
+            return false;
+        }        
+        
         // The add and index actions are always allowed.
         if (in_array($action, ['index', 'add', 'drucken'])) {
             return true;
@@ -466,7 +516,9 @@ class ItemsController extends AppController
 
         // Check that the item belongs to the current user.
         $id = $this->request->params['pass'][0];
-        $item = $this->Items->get($id);
+        $item = $this->Items->get($id, [
+                    'conditions' => [ 'Items.alt' => false ]
+                ]);
         if ($item->user_id == $user['id']) {
             return true;
         }
@@ -548,15 +600,6 @@ class ItemsController extends AppController
         // sowie der Nr des Artikels und der letzten Stelle des Jahr
         $code .= sprintf("%'.02d", $item['nummer']);
         $code .= substr($jahr, strlen($jahr) - 1, 1);
-
-//        // Barcode setzt sich zusammen aus dreistelliger Listennummer und Betragsprüfziffer
-//        $code =  sprintf("%'.03d", $benutzer['nummer']);
-//        $code .= self::betragcheck($item['preis'], false);
-//        
-//        // sowie der Nr des Artikels und der letzten Stelle des Jahr
-//        $code .= sprintf("%'.02d", $item['nummer']);
-//        $jahr = AppController::getSetting('Jahr'); 
-//        $code .= substr($jahr, strlen($jahr) - 2, 2);
 
         // ergänzt um die Prüfziffer
         return self::ean8check($code);

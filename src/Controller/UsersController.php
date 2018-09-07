@@ -332,7 +332,7 @@ class UsersController extends AppController
                         $this->Flash->error('Registrierung nicht erfolgreich.');   
                     }
                 } else {
-                    $this->Flash->error('Registrierung nicht erfolgreich.');
+                    $this->Flash->error('Registrierung nicht mehr möglich.');
                 }
             }
         }

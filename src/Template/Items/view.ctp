@@ -1,38 +1,48 @@
 <div class="actions columns large-2 medium-3">
-    <h3><?= __('Actions') ?></h3>
-    <ul class="side-nav">
-        <li><?= $this->Html->link(__('Edit Item'), ['action' => 'edit', $item->id]) ?> </li>
-        <li><?= $this->Form->postLink(__('Delete Item'), ['action' => 'delete', $item->id], ['confirm' => __('Are you sure you want to delete # {0}?', $item->id)]) ?> </li>
-        <li><?= $this->Html->link(__('List Items'), ['action' => 'index']) ?> </li>
-        <li><?= $this->Html->link(__('New Item'), ['action' => 'add']) ?> </li>
-        <li><?= $this->Html->link(__('List Users'), ['controller' => 'Users', 'action' => 'index']) ?> </li>
-        <li><?= $this->Html->link(__('New User'), ['controller' => 'Users', 'action' => 'add']) ?> </li>
+    <!-- <h3><?= __('Aktionen') ?></h3> -->
+    <ul class="side-nav">    
+        <li><?= $this->Html->link(__('abmelden'), ['controller' => 'Users', 'action' => 'logout'], ['class' => 'button radius alert']) ?></li>        
     </ul>
 </div>
-<div class="items view large-10 medium-9 columns">
-    <h2><?= h($item->id) ?></h2>
-    <div class="row">
-        <div class="large-5 columns strings">
-            <h6 class="subheader"><?= __('User') ?></h6>
-            <p><?= $item->has('user') ? $this->Html->link($item->user->name, ['controller' => 'Users', 'action' => 'view', $item->user->id]) : '' ?></p>
-            <h6 class="subheader"><?= __('Bezeichnung') ?></h6>
-            <p><?= h($item->bezeichnung) ?></p>
-            <h6 class="subheader"><?= __('Groesse') ?></h6>
-            <p><?= h($item->groesse) ?></p>
-        </div>
-        <div class="large-2 columns numbers end">
-            <h6 class="subheader"><?= __('Id') ?></h6>
-            <p><?= $this->Number->format($item->id) ?></p>
-            <h6 class="subheader"><?= __('Nummer') ?></h6>
-            <p><?= $this->Number->format($item->nummer) ?></p>
-            <h6 class="subheader"><?= __('Preis') ?></h6>
-            <p><?= $this->Number->format($item->preis) ?></p>
-        </div>
-        <div class="large-2 columns dates end">
-            <h6 class="subheader"><?= __('Created') ?></h6>
-            <p><?= h($item->created) ?></p>
-            <h6 class="subheader"><?= __('Modified') ?></h6>
-            <p><?= h($item->modified) ?></p>
-        </div>
-    </div>
+
+<div class="items index large-10 medium-9 columns">
+	<p style="margin-top: 0.5rem; margin-left: 1rem;"><b>&nbsp;Barcode:&nbsp;<?php 
+		echo $barcode.' - ';
+                echo $user->nummer.': '.$user->name.' '.$user->vorname;
+		if ($user->telefon != "") { echo ' ('.$user->telefon.')'; }
+                echo '</b> &nbsp; ';
+        ?></p>
+    <table cellpadding="0" cellspacing="0">
+    <thead>
+        <tr>
+            <th>Zeitpunkt</th>
+            <th>Bezeichnung</th>
+            <th>Größe</th>
+            <th>Preis</th>
+            <th>Gedruckt</th>
+            <th>Gelöscht</th>
+        </tr>
+    </thead>
+    <tbody>
+    <?php 
+    $i=0;
+    foreach ($items as $item): 
+    $i++; 
+    if ($item->preis >= 100) {
+    	echo '<tr style="background: #66CC00">';
+    }
+    else {
+    	echo '<tr>';
+    } ?>
+            <td><?= h($item->modified) ?></td>
+            <td><?= h($item->bezeichnung) ?></td>
+            <td><?= h($item->groesse) ?></td>
+            <td><?= $this->Number->format($item->preis, ['pattern' => '#.###,00', 'places' => 2, 'before' => '', 'after' => ' €', 'thousands' => '.', 'decimals' => ',']) ?></td>
+            <td><?= h($item->gedruckt) ?></td>
+            <td><?= h($item->alt) ?></td>
+        </tr>
+
+    <?php endforeach; ?>
+    </tbody>
+    </table>
 </div>
