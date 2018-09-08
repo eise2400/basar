@@ -7,6 +7,7 @@ use Cake\I18n\Time;
 use Cake\Core\Configure;
 use Dompdf\Dompdf;
 use Cake\Log\Log;
+use Cake\ORM\TableRegistry;
 
 /**
  * Users Controller
@@ -572,11 +573,53 @@ class UsersController extends AppController
     }    
     
     
+    // User anhand des Barcodes finden
+    public static function getUser($barcode) {
+        if (strlen($barcode) != 8)  return false;
+        $liste = substr($barcode, 0, 3);
+        
+        // Wurde die Liste gescannt
+        if (substr($barcode, 4, 2) == '00') {
+            try {
+                $users = TableRegistry::get('Users');
+                $user = $users->find('all', [
+                        'conditions' => ['nummer' => $liste]
+                    ])->firstOrFail();
+            } catch (\Exception $e) {
+                return false;
+            }
+            if ($barcode == ItemsController::barcodeerzeugen($user, null)) {
+                return $user;
+            }
+            else {
+                return false;
+            }
+        }
+        // Ansonsten prüfen, ob es das Item in der DB gibt
+        else {
+            try {
+                $items = TableRegistry::get('Items');
+                $item = $items->find('all', [
+                        'conditions' => ['barcode' => $barcode, 'alt' => false]
+                    ])->firstOrFail();
+                $users = TableRegistry::get('Users');
+                $user = $users->find('all', [
+                        'conditions' => ['nummer' => $liste]
+                    ])->firstOrFail();                
+            } catch (\Exception $e) {
+                return false;
+            }
+            return $user;
+        }
+    }     
+    
+    
     public function logout()
     {
         $this->Flash->success('Sie haben sich abgemeldet.');
         return $this->redirect($this->Auth->logout());
     }
+    
     
     // Zettel zum Auslegen drucken
     public function drucken($id = null) {

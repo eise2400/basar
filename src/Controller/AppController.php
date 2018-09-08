@@ -15,6 +15,7 @@
 namespace App\Controller;
 
 use Cake\Controller\Controller;
+use Cake\ORM\TableRegistry;
 
 /**
  * Application Controller
@@ -97,8 +98,8 @@ class AppController extends Controller
     }
         
     public function getSetting($name) {
-        $this->loadModel('Settings');
-        $wert = $this->Settings->find('all')
+        $settings = TableRegistry::get('Settings');
+        $wert = $settings->find('all')
                 ->where(['Settings.name' => $name])->first();
         if ($wert['art'] == 'Wert' || $wert['art'] == 'Checkbox') return $wert['wert'];
         else return $wert['text'];
