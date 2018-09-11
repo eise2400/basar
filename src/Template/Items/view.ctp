@@ -1,7 +1,7 @@
 <div class="actions columns large-2 medium-3">
     <!-- <h3><?= __('Aktionen') ?></h3> -->
     <ul class="side-nav">    
-        <li><?= $this->Html->link(__('abmelden'), ['controller' => 'Users', 'action' => 'logout'], ['class' => 'button radius alert']) ?></li>        
+        <li><?= $this->Html->link(__('zurück'), ['controller' => 'Itemsales', 'action' => 'search'], ['class' => 'button radius']) ?></li>        
     </ul>
 </div>
 

@@ -568,7 +568,7 @@ class RegistersController extends AppController
         $regs = $this->paginate($this->Registers);
         $this->set('registers', $regs);
         $this->set('_serialize', ['registers']);
-    }
+    }   
 
     
     /**

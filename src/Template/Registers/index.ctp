@@ -7,6 +7,7 @@
 <div class="actions columns large-2 medium-3">
     <ul class="side-nav">
         <li><?= $this->Html->link('neue Kasse anlegen', ['action' => 'add'], ['class' => 'button success radius']) ?></li>
+        <li><?= $this->Html->link('Suche', ['controller' => 'Itemsales', 'action' => 'search'], ['class' => 'button radius success']) ?></li>
         <li><?= $this->Html->link('zurück', ['controller' => 'Settings', 'action' => 'admin'], ['class' => 'button radius']) ?></li>
     </ul>
 </div>

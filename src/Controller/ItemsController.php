@@ -53,7 +53,7 @@ class ItemsController extends AppController
         $this->set('admin', $isadmin);         
         $this->set('_serialize', ['user', 'items']);
     }
-      
+    
     
     private static function stringsplit($string, $width = 30, $break="<br />", $cut = true) {
         if($cut) {
@@ -363,35 +363,10 @@ class ItemsController extends AppController
     
     
     private function aendernMoeglich() {
-        /*$this->loadModel('Users');
+        $this->loadModel('Users');
         $this->Users->recursive = 0;
         $user = $this->Users->get($this->Auth->user('id'));
-        
-        $this->loadModel('Sync');
-        $this->loadModel('Sales');
-        $offen = $this->Sync->find('all', array( 
-              'conditions' => array('gebucht = 0'),
-              'order' => array('created'),
-        ))->toArray();
-        foreach ($offen as $scan) {
-            try {
-                $sale = $this->Sales->get($scan->item_id);
-            } catch (\Exception $e) {
-                $sale = $this->Sales->newEntity();
-                $sale->id = $scan->item_id;
-            }
-            if ($scan->art == 1) $sale->verkauft = 1;
-            else $sale->verkauft = 0;
-            if ($this->Sales->save($sale)) {
-                $scan->gebucht = 1;
-                $this->Sync->save($scan);
-            }
-            else return false;
-            // In Sales eintragen
-        }
-        return true;*/        
-        
-        
+        if ($user->ist_da == true) return false;
         
         return AppController::getSetting('Ändern möglich');
     }
@@ -500,7 +475,7 @@ class ItemsController extends AppController
         $action = $this->request->params['action'];
 
         // Einige Transaktionen sind nur für den Admin erlaubt
-        if (in_array($action, ['barcodeerzeugen', 'indexOld', 'touchItems', 'touchAllItems'])) {
+        if (in_array($action, ['barcodeerzeugen', 'indexOld', 'touchItems', 'touchAllItems', 'search'])) {
             return false;
         }        
         

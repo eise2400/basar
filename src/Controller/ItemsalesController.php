@@ -253,4 +253,22 @@ class ItemsalesController extends AppController
         // Return response object to prevent controller from trying to render a view.
         return $response;            
     }    
+    
+    
+    public function search() {
+        $items = [];
+        if ($this->request->is(['patch', 'post', 'put'])) {
+            $barcode = $this->request->data['barcode'];
+            $bez = $this->request->data['bezeichnung'];
+            $groesse = $this->request->data['groesse'];
+            $items = $this->Itemsales->find('all')
+                ->where([
+                    'Itemsales.barcode LIKE' => '%'.$barcode.'%',
+                    'Itemsales.bezeichnung LIKE' => '%'.$bez.'%',
+                    'Itemsales.groesse LIKE' => '%'.$groesse.'%'
+                ]);
+        }
+        $this->set(compact('item'));
+        $this->set('items', $items);
+    }    
 }
