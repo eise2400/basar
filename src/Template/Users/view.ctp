@@ -5,7 +5,11 @@
     </ul>
 </div>
 <div class="users view large-10 medium-9 columns">
-    <h2><?= h($user->nummer.': '.($user->name=='' ? 'kein Name' : $user->name)) ?></h2>
+    <h2><?php echo $user->nummer.': ';
+        if ($user->name == '') echo 'kein Name';
+        else echo $user->name.' '.$user->vorname;
+	if ($user->telefon != "") echo ' ('.$user->telefon.')';
+    ?></h2>
     <div class="related row">
         <div class="column large-12">
         <?php if (!empty($uitems)) { ?>
