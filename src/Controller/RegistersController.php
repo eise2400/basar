@@ -41,50 +41,31 @@ class RegistersController extends AppController
         $this->viewBuilder()->setLayout('ajax');  
         if ($doThrow) throw new \Exception($message);
     }
-      
+    
     
     // Syncs in die Sales eintragen
     private function syncBuchen() {
         $this->loadModel('Sync');
         $this->loadModel('Sales');
-        $this->loadModel('Users');        
         $offen = $this->Sync->find('all', array( 
               'conditions' => array('gebucht = 0'),
               'order' => array('created'),
         ))->toArray();
-        $verbucht = 0;
-        
         foreach ($offen as $scan) {
-            // Check-In
-            if ($scan->art == 0) {
-                $user = UsersController::getUser($scan->barcode);
-                if ($user) {
-                    $user->ist_da = true;
-                    $this->Users->save($user);
-                    $scan->gebucht = 1;
-                    $this->Sync->save($scan);   
-                    $verbucht++;
-                } 
-                else {
-                    $this->messageEnd('Es wurden '.$verbucht.' Scans verbucht; Benutzer zu '.$scan->barcode.' nicht gefunden.;', true);
-                } 
+            try {
+                $sale = $this->Sales->get($scan->item_id);
+            } catch (\Exception $e) {
+                $sale = $this->Sales->newEntity();
+                $sale->id = $scan->item_id;
             }
-            elseif ($scan->art == 1) {
-//                try {
-//                    $sale = $this->Sales->get($scan->item_id);
-//                } catch (\Exception $e) {
-//                    $sale = $this->Sales->newEntity();
-//                    $sale->id = $scan->item_id;
-//                }
-//                if ($scan->art == 1) $sale->verkauft = 1;
-//                else $sale->verkauft = 0;
-//                if ($this->Sales->save($sale)) {
-//                    $scan->gebucht = 1;
-//                    $this->Sync->save($scan);
-//                }
-//                else return false;
-                // In Sales eintragen                
+            if ($scan->art == 1) $sale->verkauft = 1;
+            else $sale->verkauft = 0;
+            if ($this->Sales->save($sale)) {
+                $scan->gebucht = 1;
+                $this->Sync->save($scan);
             }
+            else return false;
+            // In Sales eintragen
         }
         return true;
     }
@@ -367,13 +348,9 @@ class RegistersController extends AppController
 
         foreach ($this->eingabe['table'] as $tabelle) {
             if (!in_array($tabelle, $ERLAUBT)) return $this->messageEnd('Tabelle nicht erlaubt', true);
-            if ($tabelle == 'sync') {
-                $statement = $this->connection->execute('SELECT MAX(created) AS maxval FROM '.$tabelle.
-                        ' WHERE register_id = '.$this->eingabe['registerid'])->fetchAll('assoc');
-            }
-            else {
-                $statement = $this->connection->execute('SELECT MAX(modified) AS maxval FROM '.$tabelle)->fetchAll('assoc');
-            }
+            if ($tabelle == 'sync') $bedingung = ' WHERE register_id = '.$this->eingabe['registerid'];
+            else $bedingung = '';
+            $statement = $this->connection->execute('SELECT MAX(modified) AS maxval FROM '.$tabelle.$bedingung)->fetchAll('assoc');
             if (!is_null($statement[0]["maxval"])) $lastscan = $statement[0]["maxval"];
             else $lastscan = 0;
             $modified[$tabelle] = $lastscan;
@@ -386,26 +363,23 @@ class RegistersController extends AppController
     
     // Ansonsten Kassen-Scans einlesen    
     private function upSync() {
-        // Typ: 0 = Checkin, Typ: 1 = Verkauft
-        //                      Kasse ID  Barcode  Typ  Timestamp
-        //$eingabe['scans'] = '[["4","2","3245324","0","2017-08-03 22:50:20"]]';
-        if (!array_key_exists('scans', $this->eingabe)) return $this->messageEnd('Scans nicht gesetzt; ', true); 
+        //$eingabe['scans'] = '[["4","2","123","3245324","2017-08-03 22:50:20"]]';
+        if (!array_key_exists('scans', $this->eingabe)) return $this->messageEnd('Scans nicht gesetzt', true); 
         $scans = $this->eingabe['scans'];
 
-        
-        if (!array_key_exists('oldscans', $this->eingabe)) return $this->messageEnd('Oldscans nicht gesetzt; ', true); 
+        if (!array_key_exists('oldscans', $this->eingabe)) return $this->messageEnd('Oldscans nicht gesetzt', true); 
         $oldscans = $this->eingabe['oldscans'];
 
         //Prüfen, ob die Anzahl der alten Scans stimmt
         $statement = $this->connection->execute('SELECT COUNT(*) AS anz FROM sync WHERE register_id = '.$this->eingabe['registerid'])->fetchAll('assoc');
         if (!\is_null($statement[0]["anz"])) $scansindb = $statement[0]["anz"];
         else $scansindb = 0;
-
+        $this->messageEnd('ScansinDB ='.$scansindb); 
         if ($oldscans != $scansindb) {
            // Scans dieser Kasse ablöschen
            $statement = $this->connection->execute('DELETE FROM sync WHERE register_id = '.$this->eingabe['registerid']);
            $anz = $statement->rowCount();
-           return $this->messageEnd('Oldscans stimmt nicht mit Einträgen überein. '.$anz.' alte Scans der Kasse gelöscht; ', true);
+           return $this->messageEnd('Oldscans stimmt nicht mit Einträgen überein. '.$anz.' alte Scans der Kasse gelöscht!');
         }
 
         //Log::write('debug', 'scans:'.print_r($scans, true));
@@ -414,7 +388,6 @@ class RegistersController extends AppController
            //Log::write('debug', 'Numfields:'.$num_fields);
            $tmpstr = '';
            $i = 0; // Zähler wie viele Zeilen in ein Statement gepackt werden 
-           $anzahl = 0; // So viele Syncs sind in die Datenbank eingetragen worden.
 
            // Spaltennamen merken
            /*$spalten = '';
@@ -431,7 +404,7 @@ class RegistersController extends AppController
                $row = $scans[$o];
 
                // Jede Kasse darf nur eigene Einträge senden. Kann, muss aber nicht so sein.
-               if ($row[0] != $this->kasse->id) return $this->messageEnd('Eintrag ungültiger Kasse; ', true);
+               if ($row[0] != $this->kasse->id) return $this->messageEnd('Eintrag ungültiger Kasse!', true);
 
                if ($i == 0) {
                    $tmpstr = 'INSERT INTO sync ('.$spalten.') VALUES (';
@@ -441,6 +414,7 @@ class RegistersController extends AppController
                }
 
                foreach ($row as $spalte => $wert) {
+                   //$wert = ereg_replace("\n","\\n", addslashes($wert));
                    $wert = preg_replace('/\n/','/\\n/', addslashes($wert));
                    if (isset($wert)) { $tmpstr .= '"'.$wert.'"' ; } else { $tmpstr .= '""'; }
                    $tmpstr .= ','; 
@@ -452,23 +426,18 @@ class RegistersController extends AppController
                if (($i >= 10) || ($o == sizeof($scans) - 1)) // nach 10 Datensätzen oder wenn keine mehr übrig sind
                {
                    //Log::write('debug', 'SQL:'.$tmpstr);
-                   try {
-                    $statement = $this->connection->execute($tmpstr);
-                   }
-                   catch (\Exception $e) {
-                        return $this->messageEnd('SQL nicht erfolgreich! '.$anzahl.' Einträge gespeichert; '.$e->getMessage()."; ", true);
-                   } 
-                   $anzahl += $statement->rowCount();
+                   $statement = $this->connection->execute($tmpstr);
+                   $anzahl = $statement->rowCount();
                    //Log::write('debug', 'RET:'.$anzahl);
                    $i = 0;
                }
            } 
 
-           $this->message .= 'Es wurden '.$anzahl.' neue Scans übertragen; ';
-           $this->syncBuchen();           
+           //$this->syncBuchen();
+           $message = 'Neue Scans übertragen.';
         }
         else {
-           $this->message = 'Keine neuen Scans übertragen; ';
+           $message = 'Keine neuen Scans übertragen.';
         }
 
         //Log::write('debug', print_r($scans, true));     
@@ -500,12 +469,12 @@ class RegistersController extends AppController
         }
         
         //$ip = '192.168.2.201';
-        if (!array_key_exists('ip', $this->eingabe)) return $this->messageEnd('IP fehlt; '); 
+        if (!array_key_exists('ip', $this->eingabe)) return $this->messageEnd('IP fehlt'); 
         $ip = $this->eingabe['ip'];
-        if (is_null($ip) || $ip == '') return $this->messageEnd('IP fehlt; ');        
+        if (is_null($ip) || $ip == '') return $this->messageEnd('IP fehlt');        
         
         //$eingabe['scans'] = '[["4","2","123","3245324","2017-08-03 22:50:20"]]';
-        if (!array_key_exists('registerid', $this->eingabe)) return $this->messageEnd('Kassennummer fehlt; '); 
+        if (!array_key_exists('registerid', $this->eingabe)) return $this->messageEnd('Kassennummer fehlt'); 
         
         // Prüfen, ob registerid gesetzt und ob diese zum Benutzer passt
         $kassen = $this->Registers->find('all', array( 
@@ -513,20 +482,20 @@ class RegistersController extends AppController
           'limit' => 1
         ));
         $this->kasse = $kassen->first();
-        if (is_null($this->kasse)) return $this->messageEnd('Kasse nicht eingetragen oder nicht berechtigt; '); 
+        if (is_null($this->kasse)) return $this->messageEnd('Kasse nicht eingetragen oder nicht berechtigt'); 
             
         // Wann war der letzte Sync?
         // Wenn noch nicht mehr als eine Stunde her, dann IP Prüfung durchführen
         if ($this->minutenHer($this->kasse->lastSync) < 60) {
             if (!is_null($this->kasse->ip) && $this->kasse->ip != $ip) {
-                return $this->messageEnd('Kasse unter anderer IP eingetragen. Doppelt angemeldet?; ');
+                return $this->messageEnd('Kasse unter anderer IP eingetragen. Doppelt angemeldet?');
             }
         }   
         
         // Wegen Umlauten
         $this->connection->execute('SET NAMES utf8');  
         
-        if (!array_key_exists('modus', $this->eingabe)) return $this->messageEnd('Modus fehlt; '); 
+        if (!array_key_exists('modus', $this->eingabe)) return $this->messageEnd('Modus fehlt'); 
         try {
             switch ($this->eingabe['modus']) {
                 case '1':
@@ -548,7 +517,7 @@ class RegistersController extends AppController
     //               upsync - array('tabelle': JSON)                 
                     break;
                 default:
-                    return $this->messageEnd('Falscher Modus; ');
+                    return $this->messageEnd('Falscher Modus');
             }
             
             $this->setLastSync();
@@ -570,20 +539,20 @@ class RegistersController extends AppController
         if (is_null($this->kasse->ip) || $this->kasse->ip != $this->eingabe['ip']) {
             $this->kasse->ip = $this->eingabe['ip'];
             $this->kasse->lastSync = date('Y-m-d H:i:s');
-            if ($this->Registers->save($this->kasse)) $this->message .= 'Sync erfolgreich. IP eingetragen; ';
-            else $this->message .= 'Sync geschrieben. IP konnte nicht eingetragen werden; ';
+            if ($this->Registers->save($this->kasse)) $message = 'Sync erfolgreich. IP eingetragen.';
+            else $message = 'Sync geschrieben. IP konnte nicht eingetragen werden.';
         }
         else {
             $this->kasse->lastSync = date('Y-m-d H:i:s');
             if ($this->Registers->save($this->kasse)) {
-                $this->message .= 'Wiederholter Sync erfolgreich; ';
+                $message = 'Wiederholter Sync erfolgreich.';
             }
             else {
-                $this->message .= 'Fehler. Kasse konnte nicht geschrieben werden; ';
+                $message = 'Fehler. Kasse konnte nicht geschrieben werden.';
             }                
         }
 
-        $this->set('message', $this->message);    
+        $this->set(compact('message'));    
     }
     
     
