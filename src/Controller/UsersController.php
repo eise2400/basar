@@ -92,8 +92,7 @@ class UsersController extends AppController
         $this->paginate = [
             'limit' => 20,
             'order' => [
-                'Users.name' => 'asc',
-                'Users.vorname' => 'asc'
+                'Users.nummer' => 'asc'
             ],
             'conditions' => [ 
                 'Users.gruppe =' => 'V',

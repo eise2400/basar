@@ -133,7 +133,7 @@ class SettingsController extends AppController
         $daten[] = $teile4[0];
         
         // Anzahl Käufer
-        $teile5 = $connection->execute('select count(*) AS `Anzahl Käufer` from (SELECT count(*) FROM `sync` group by sync.created) as s')->fetchAll('assoc');
+        $teile5 = $connection->execute('select count(*) AS `Anzahl Käufer` from ( SELECT `paydeskId`, `cartId`, count(*) FROM `sold` group by `paydeskId`, `cartId` ) as s')->fetchAll('assoc');
         $daten[] = $teile5[0]; 
         
         

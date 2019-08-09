@@ -4,6 +4,7 @@ namespace App\Controller;
 use App\Controller\AppController;
 use Cake\Log\Log;
 use Dompdf\Dompdf;
+use Cake\Datasource\ConnectionManager;
 
 /**
  * Itemsales Controller
@@ -51,7 +52,6 @@ class ItemsalesController extends AppController
         error_reporting(E_ERROR | E_WARNING | E_PARSE);
 
         $old_limit = ini_set('memory_limit', '128M');
-        //require_once(ROOT . DS . 'plugins/dompdf/dompdf_config.inc.php');
 
         // Benutzer holen für Listennummer
         $this->loadModel('Users');
@@ -254,6 +254,78 @@ class ItemsalesController extends AppController
         return $response;            
     }    
     
+    
+    public function unterschriftsliste() {
+        $sql1 = <<<EOT
+SELECT users.name, users.vorname, users.nummer, format(s2.einnahmen - s2.listengebuehr - s2.einbehalt, 2, "de_DE") as Einnahmen
+FROM users LEFT JOIN
+( SELECT user_id, SUM(einnahmen) AS einnahmen, SUM(anzverkauft) AS anzverkauft, SUM(anzartikel) AS anzartikel, 
+EOT;
+
+        $sql2 = <<<EOT
+FROM ( SELECT user_id, SUM(preis) AS einnahmen, COUNT(*) AS anzverkauft, 0 AS anzartikel
+    FROM `itemsales` WHERE verkauft = 1 GROUP BY user_id
+    UNION
+    SELECT user_id, 0, 0, COUNT(*) FROM `items` WHERE alt = false GROUP BY user_id
+    ) AS s1
+GROUP BY user_id
+) AS s2 
+ON users.id = s2.user_id
+WHERE users.gruppe = 'V' AND users.emailok = 1 AND NOT s2.anzartikel IS NULL
+ORDER BY users.name, users.vorname, users.nummer
+EOT;
+        
+        $sql = $sql1.'CEIL(SUM(anzartikel) / '.AppController::getSetting('Listenlänge').') * '.AppController::getSetting('Listengebühr').' AS listengebuehr, ';
+        $sql .= 'CEIL((SUM(einnahmen) * '.AppController::getSetting('Prozent').' / 100 ) * 2) / 2 AS einbehalt '.$sql2;
+        
+        $connection = ConnectionManager::get('default');        
+        $namen = $connection->execute($sql)->fetchAll('assoc');
+                
+        error_reporting(E_ERROR | E_WARNING | E_PARSE);
+        $old_limit = ini_set('memory_limit', '128M');
+        
+        $text = AppController::getSetting('Listenformatierung');
+        $nummer = 0;
+        
+        foreach ($namen as $daten) {
+            if ($nummer == 0) {
+                $text .= '<div style="top:0cm; left:2cm; font-size: 20pt;">'.AppController::getSetting('Titel').'</div>';
+                $text .= '<div class="gr18" style="top:1cm; left:-1.5cm;"><table width="19cm"><thead><tr>';
+                $text .= '<th align="left">Name</th><th align="left">Vorname</th><th align="left">Liste</th><th align="right">Zahlbetrag</th>';
+                $text .= '<th align="right">Unterschrift</th></tr></thead><tbody>';
+            }            
+            $text .= '<tr><td style="white-space:nowrap;">'.$daten['name'].'</td>';
+            $text .= '<td style="white-space:nowrap;">'.$daten['vorname'].'</td>';
+            $text .= '<td>'.$daten['nummer'].'&nbsp;</td>';
+            $text .= '<td align="right">'.$daten['Einnahmen'].'&euro;</td>';
+            $text .= '<td align="right">________________</td></tr>'."\n";            
+            $nummer++;
+            if ($nummer >= 23) {
+                $nummer = 0;
+                $text .= '</tbody></table></div>'."\n";                
+                $text .= '<div style="page-break-after:always">&nbsp;</div>'."\n";
+            }
+        }   
+        
+        $text = $this->_parseBrief($text); 
+        //Log::write('debug', print_r($text, true));
+        
+        $dompdf = new Dompdf();
+        $dompdf->load_html($text);
+        $dompdf->render();
+        $pdf = $dompdf->output();
+
+        $this->response = $this->response->withDisabledCache();
+        $response = $this->response;
+        $response->body($pdf);
+        $response = $response->withType('pdf');
+        $response = $response->withDownload('Druckliste.pdf');
+
+        // Return response object to prevent controller from trying to render a view.
+        return $response;                
+                          
+    }
+
     
     public function search() {
         $items = [];

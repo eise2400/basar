@@ -1,5 +1,6 @@
 <div class="actions columns large-2 medium-3">
     <ul class="side-nav">
+        <li><?= $this->Html->link('Unterschriftsliste', ['controller' => 'Itemsales', 'action' => 'unterschriftsliste'], ['class' => 'button success radius']) ?></li>
         <li><?= $this->Html->link('zurück', ['controller' => 'Settings', 'action' => 'admin'], ['class' => 'button radius']) ?></li>
     </ul>
 </div>
